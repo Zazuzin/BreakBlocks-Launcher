@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+set -euo pipefail
+app_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
+cd "$app_dir"
+export LD_LIBRARY_PATH="$app_dir/runtime/lib:${LD_LIBRARY_PATH:-}"
+export TCL_LIBRARY="$app_dir/runtime/lib/tcl9.0"
+export TK_LIBRARY="$app_dir/runtime/lib/tk9.0"
+export FONTCONFIG_PATH="$app_dir/fonts"
+export FONTCONFIG_FILE="fonts.conf"
+export SSL_CERT_FILE="$app_dir/certs/cacert.pem"
+log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/zazu-launcher"
+mkdir -p "$log_dir"
+if ! "$app_dir/runtime/bin/python3" "$app_dir/app/zazu_launcher.py" "$@" >>"$log_dir/launcher.log" 2>&1; then
+  xdg-open "$log_dir/launcher.log" 2>/dev/null || true
+  exit 1
+fi
