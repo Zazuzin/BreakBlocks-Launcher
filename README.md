@@ -1,76 +1,90 @@
-# Zazu Launcher
+# BreakBlocks Launcher
 
-Zazu Launcher is an independent, cross-platform launcher for Minecraft: Java Edition. It provides a modern desktop interface for creating isolated Minecraft instances, selecting mod loaders, and managing Microsoft or local offline profiles.
+**NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG
+OR MICROSOFT.**
 
-> **Development status:** Zazu Launcher is currently an alpha project. Microsoft account authentication uses the launcher's own Microsoft Entra application registration. Approval of that application for Minecraft Services is currently pending.
+BreakBlocks Launcher is an independent desktop launcher for managing Minecraft
+instances, accounts, mods, and BreakBlocks community links. The interface is
+written in Python with Tk and CustomTkinter and is packaged for Windows and
+Linux/Steam Deck.
+
+The current development version is **0.9.6 Alpha**.
 
 ## Current features
 
-- Native desktop interface for Windows and Linux
-- Complete Minecraft version catalogue
-- Separate game directory for every instance
-- Vanilla, Fabric, Quilt, Forge, and NeoForge profiles
-- Automatic Java runtime selection and installation
-- Shared Minecraft asset and library cache
-- Installation progress with stages and percentages
-- Microsoft OAuth device-code sign-in
-- Minecraft ownership and profile checks
-- Microsoft skin heads in the account selector
-- Multiple accounts with a clearly selected launch account
-- Local offline profiles with Minecraft-compatible offline UUIDs
-- Per-instance Minecraft launch logs
+- Fabric, Forge, NeoForge, and Vanilla instance profiles
+- Microsoft authentication and ownership-gated Offline profiles
+- Per-instance names, icons, memory, loaders, and tracked playtime
+- Crash detection with an integrated report viewer and three retained launch logs
+- Modrinth browse, installed-mod inventory, and automatic compatible update
+  checks from Modrinth and linked official mod sources
+- Optional Fabric Essentials installation for Meteor Client, Trouser Streak,
+  Zazu's Server Seeker, and Fabric API
+- Verified one-click launcher updates through GitHub Releases for Windows,
+  Ubuntu, and portable Linux/Steam Deck, with Stable selected by default and
+  Alpha available as an opt-in channel
+- Configurable Java, memory, launch behaviour, and update preferences
+- The authenticated BreakBlocks web chat embedded directly in the Chat page,
+  with a persistent local browser profile so website sign-in and preferences
+  survive launcher restarts
 
-## Microsoft authentication
+## Run from source
 
-Zazu Launcher uses Microsoft OAuth 2.0 device authorization as a public desktop client. Users authenticate on Microsoft's website; the launcher never receives or stores Microsoft passwords.
-
-The authentication sequence is:
-
-1. Microsoft OAuth device authorization
-2. Xbox Live user authentication
-3. XSTS authorization for Minecraft Services
-4. Minecraft access-token exchange
-5. Java Edition ownership and profile lookup
-
-The public Microsoft Entra Application (Client) ID used by the launcher is:
-
-`f621b9a7-a133-49c0-b04b-66de82aacb62`
-
-OAuth and Minecraft session tokens are stored only in the current user's local launcher data. They must never be committed to this repository or included in bug reports.
-
-## Running from source
-
-Python 3.12 or newer is recommended.
-
-```bash
-python -m venv .venv
-```
-
-Activate the environment, then install the dependencies:
+Python 3.10 or newer with Tk support is required.
 
 ```bash
 python -m pip install -r requirements.txt
-python zazu_launcher.py
+python zazu_launcher_boot.pyw
 ```
-
-Linux users may also need to install their distribution's Tk package, commonly named `python3-tk`.
-
-## Launcher data
-
-- Windows: `%LOCALAPPDATA%\Zazu Launcher`
-- Linux: `~/.local/share/zazu-launcher`
-
-Minecraft instances, settings, account sessions, downloaded Java runtimes, and logs are kept outside the source directory.
 
 ## Project structure
 
-- `zazu_launcher.py` — desktop interface and account management
-- `minecraft_backend.py` — instance installation and Minecraft launching
-- `zazu_launcher_boot.pyw` — Windows packaged-runtime bootstrap
-- `Zazu Launcher` — Linux packaged-build start script
-- `Zazu Launcher.bat` — Windows packaged-build start script
-- `fonts/` — Linux packaged-build font configuration
+| Path | Responsibility |
+| --- | --- |
+| `zazu_launcher.py` | Application state and desktop interface |
+| `minecraft_backend.py` | Version installation, Java selection, and launch commands |
+| `modrinth_client.py` | Mod inventory, search, installation, and updates |
+| `mod_sources.py` | Trusted non-Modrinth source adapters |
+| `launcher_update.py` | Release discovery, integrity checks, staging, and restart |
+| `chat_browser.py` | Persistent embedded browser for BreakBlocks web chat |
+| `app_config.py` | Product version and release endpoints |
+| `tests/` | Dependency-light regression tests |
 
-## Disclaimer
+Older internal `zazu_*` names remain in place where changing them could break
+existing data or shortcuts. They are implementation details; the public product
+name is BreakBlocks Launcher.
 
-Zazu Launcher is an independent project and is not affiliated with, endorsed by, or sponsored by Microsoft, Mojang Studios, or Minecraft. Minecraft is a trademark of Microsoft Corporation.
+## Tests and formatting
+
+```bash
+python -m black --check --line-length 100 *.py tests tools
+python -m ruff check *.py tests tools
+PYTHONPATH=. sh -c 'for test_file in tests/test_*.py; do python "$test_file" || exit; done'
+```
+
+Release builds and Windows signing are documented in [PUBLISHING.md](PUBLISHING.md).
+Release changes are tracked in [CHANGELOG.md](CHANGELOG.md).
+Release legal checks are tracked in
+[LEGAL-RELEASE-CHECKLIST.md](LEGAL-RELEASE-CHECKLIST.md).
+
+## Licence
+
+The original source code for BreakBlocks Launcher is licensed under the
+[GNU General Public License v3.0 only](LICENSE). BreakBlocks branding,
+community artwork, and third-party names and marks are not covered by that
+licence unless their owners explicitly say otherwise.
+
+## Legal
+
+BreakBlocks Launcher is an independent community project. It is not affiliated
+with, endorsed by, sponsored by, or approved by Microsoft Corporation or Mojang
+AB.
+
+Minecraft and related assets are © Mojang AB. “Minecraft” is a trademark of
+Microsoft Corporation. Microsoft, Mojang, Minecraft, and all other third-party
+names, logos, and trademarks belong to their respective owners.
+
+See the [Launcher Privacy Notice](PRIVACY.md), [Launcher Terms](TERMS.md),
+[Third-Party Notices](THIRD-PARTY-NOTICES.md), official
+[Minecraft Usage Guidelines](https://www.minecraft.net/usage-guidelines), and
+[Minecraft EULA](https://www.minecraft.net/eula).

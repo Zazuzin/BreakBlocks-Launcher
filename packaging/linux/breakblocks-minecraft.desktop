@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Minecraft
+Comment=Minecraft launched by BreakBlocks Launcher
+Exec=breakblocks-launcher
+Icon=breakblocks-minecraft
+StartupWMClass=Minecraft* 26.2
+Terminal=false
+NoDisplay=true
+Categories=Game;

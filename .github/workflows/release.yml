@@ -1,0 +1,193 @@
+name: Build and publish release
+
+on:
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Verify release metadata
+        shell: pwsh
+        run: |
+          $version = python -c "from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)"
+          $stage = python -c "from app_config import APP_RELEASE_STAGE; print(APP_RELEASE_STAGE)"
+          if ($stage -eq "Alpha") {
+            $channel = "alpha"
+            $suffix = "-alpha"
+          } elseif ($stage -eq "Stable") {
+            $channel = "stable"
+            $suffix = ""
+          } else {
+            throw "APP_RELEASE_STAGE must be Alpha or Stable"
+          }
+          if ("v$version$suffix" -ne "${{ github.ref_name }}") {
+            throw "Tag ${{ github.ref_name }} does not match $version $stage"
+          }
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "CHANNEL=$channel" | Out-File -FilePath $env:GITHUB_ENV -Append
+          "ASSET_SUFFIX=$suffix" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Check formatting and tests
+        shell: pwsh
+        run: |
+          python -m black --check --line-length 100 *.py tests tools
+          python -m ruff check *.py tests tools
+          $env:PYTHONPATH = (Get-Location).Path
+          Get-ChildItem tests/test_*.py | ForEach-Object { python $_.FullName; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+      - name: Collect third-party licences
+        run: python tools/collect_dependency_licenses.py --output third-party-licenses
+      - name: Build Windows package
+        run: python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
+      - name: Sign Windows executable
+        shell: pwsh
+        env:
+          SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_CERT_BASE64 }}
+          SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERT_PASSWORD }}
+        run: |
+          if (-not $env:SIGNING_CERTIFICATE -or -not $env:SIGNING_PASSWORD) {
+            throw "Trusted Windows signing credentials are required for release publishing"
+          }
+          $certificate = Join-Path $env:RUNNER_TEMP "breakblocks-signing.pfx"
+          [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:SIGNING_CERTIFICATE))
+          $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
+            Sort-Object FullName -Descending |
+            Select-Object -First 1
+          if (-not $signTool) { throw "signtool.exe was not found" }
+          & $signTool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $certificate /p $env:SIGNING_PASSWORD "dist\BreakBlocks Launcher\BreakBlocks Launcher.exe"
+          if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          $signature = Get-AuthenticodeSignature "dist\BreakBlocks Launcher\BreakBlocks Launcher.exe"
+          if ($signature.Status -ne "Valid") { throw "Authenticode verification failed: $($signature.Status)" }
+          Remove-Item $certificate -Force
+      - name: Package Windows release
+        shell: pwsh
+        run: |
+          Copy-Item "README-Windows.txt" "dist\BreakBlocks Launcher\README.txt"
+          Copy-Item "LICENSE", "PRIVACY.md", "TERMS.md", "THIRD-PARTY-NOTICES.md" "dist\BreakBlocks Launcher"
+          Copy-Item "third-party-licenses" "dist\BreakBlocks Launcher\third-party-licenses" -Recurse
+          Rename-Item "dist\BreakBlocks Launcher" "BreakBlocks-Launcher"
+          $archive = "BreakBlocks-Launcher-$env:VERSION-Windows-x86_64.zip"
+          Compress-Archive -Path "dist\BreakBlocks-Launcher" -DestinationPath $archive -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-package
+          path: BreakBlocks-Launcher-*-Windows-x86_64.zip
+          if-no-files-found: error
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Tk and build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes python3-tk
+          python -m pip install -r requirements-dev.txt
+      - name: Verify release metadata
+        run: |
+          version="$(python -c 'from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)')"
+          stage="$(python -c 'from app_config import APP_RELEASE_STAGE; print(APP_RELEASE_STAGE)')"
+          case "$stage" in
+            Alpha) channel=alpha; suffix=-alpha ;;
+            Stable) channel=stable; suffix= ;;
+            *) echo "APP_RELEASE_STAGE must be Alpha or Stable" >&2; exit 1 ;;
+          esac
+          test "v${version}${suffix}" = "${GITHUB_REF_NAME}"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          echo "CHANNEL=${channel}" >> "$GITHUB_ENV"
+          echo "ASSET_SUFFIX=${suffix}" >> "$GITHUB_ENV"
+      - name: Check formatting and tests
+        run: |
+          python -m black --check --line-length 100 *.py tests tools
+          python -m ruff check *.py tests tools
+          export PYTHONPATH="$PWD"
+          for test_file in tests/test_*.py; do python "$test_file"; done
+      - name: Collect third-party licences
+        run: python tools/collect_dependency_licenses.py --output third-party-licenses
+      - name: Build Linux package
+        run: python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
+      - name: Package Steam Deck release
+        run: |
+          cp README.txt "dist/BreakBlocks Launcher/README.txt"
+          cp LICENSE PRIVACY.md TERMS.md THIRD-PARTY-NOTICES.md "dist/BreakBlocks Launcher/"
+          cp -R fonts "dist/BreakBlocks Launcher/fonts"
+          cp -R third-party-licenses "dist/BreakBlocks Launcher/third-party-licenses"
+          mv "dist/BreakBlocks Launcher" dist/BreakBlocks-Launcher
+          chmod +x "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
+          tar -C dist -czf "BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64.tar.gz" BreakBlocks-Launcher
+      - name: Build Ubuntu package
+        run: |
+          ./packaging/linux/build-deb.sh
+          cp "dist-release/BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-package
+          path: |
+            BreakBlocks-Launcher-*-Ubuntu-amd64.deb
+            BreakBlocks-Launcher-*-SteamDeck-x86_64.tar.gz
+          if-no-files-found: error
+
+  publish:
+    needs: [windows, linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/download-artifact@v4
+        with:
+          path: release-assets
+          merge-multiple: true
+      - name: Build source archive and update manifest
+        run: |
+          version="$(python -c 'from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)')"
+          stage="$(python -c 'from app_config import APP_RELEASE_STAGE; print(APP_RELEASE_STAGE)')"
+          case "$stage" in
+            Alpha) channel=alpha; suffix=-alpha ;;
+            Stable) channel=stable; suffix= ;;
+            *) echo "APP_RELEASE_STAGE must be Alpha or Stable" >&2; exit 1 ;;
+          esac
+          test "v${version}${suffix}" = "${GITHUB_REF_NAME}"
+          echo "VERSION=${version}" >> "$GITHUB_ENV"
+          echo "CHANNEL=${channel}" >> "$GITHUB_ENV"
+          echo "ASSET_SUFFIX=${suffix}" >> "$GITHUB_ENV"
+          git archive --format=zip --prefix=BreakBlocks-Launcher-Source/ \
+            --output="release-assets/BreakBlocks-Launcher-${version}-source.zip" HEAD
+          python tools/generate_update_manifest.py \
+            --version "$version" \
+            --tag "$GITHUB_REF_NAME" \
+            --channel "$channel" \
+            --repository "$GITHUB_REPOSITORY" \
+            --assets-dir release-assets \
+            --output release-assets/breakblocks-update.json
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          title="BreakBlocks Launcher ${VERSION}"
+          prerelease=()
+          if [ "$CHANNEL" = alpha ]; then
+            title="$title Alpha"
+            prerelease+=(--prerelease)
+          fi
+          gh release create "$GITHUB_REF_NAME" release-assets/* \
+            --verify-tag \
+            --generate-notes \
+            --title "$title" \
+            "${prerelease[@]}"

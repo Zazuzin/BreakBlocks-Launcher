@@ -1,0 +1,10 @@
+Package: breakblocks-launcher
+Version: 0.9.6
+Section: games
+Priority: optional
+Architecture: amd64
+Maintainer: BreakBlocks Launcher maintainers
+Depends: python3 (>= 3.12), python3-tk, curl, desktop-file-utils, fontconfig, hicolor-icon-theme, libasound2t64 | libasound2, libdbus-1-3, libegl1, libfontconfig1, libgl1, libnss3, libx11-6, libx11-xcb1, libxcb1, libxcb-cursor0, libxcb-icccm4, libxcb-image0, libxcb-keysyms1, libxcb-randr0, libxcb-render-util0, libxcb-shape0, libxcb-xfixes0, libxcb-xkb1, libxcomposite1, libxdamage1, libxext6, libxkbcommon0, libxkbcommon-x11-0, libxrandr2
+Description: Independent Minecraft launcher for the BreakBlocks community
+ BreakBlocks Launcher manages Minecraft instances, profiles, mods and the
+ BreakBlocks community web chat from one desktop application.

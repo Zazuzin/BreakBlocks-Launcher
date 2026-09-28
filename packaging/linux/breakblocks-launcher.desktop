@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=BreakBlocks Launcher
+Comment=Launch Minecraft for the BreakBlocks community
+Exec=breakblocks-launcher
+Icon=breakblocks-launcher
+StartupWMClass=Breakblockslauncher
+Terminal=false
+StartupNotify=true
+Categories=Game;
+Keywords=Minecraft;BreakBlocks;Launcher;

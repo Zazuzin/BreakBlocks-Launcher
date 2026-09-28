@@ -1,0 +1,96 @@
+name: Build private test packages
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "build/0.9.6-browser-chat"
+
+permissions:
+  contents: read
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Read version
+        shell: pwsh
+        run: |
+          $version = python -c "from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)"
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Check formatting and tests
+        shell: pwsh
+        run: |
+          python -m black --check --line-length 100 *.py tests tools
+          python -m ruff check *.py tests tools
+          $env:PYTHONPATH = (Get-Location).Path
+          Get-ChildItem tests/test_*.py | ForEach-Object {
+            python $_.FullName
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+      - name: Build unsigned Windows test package
+        shell: pwsh
+        run: |
+          python tools/collect_dependency_licenses.py --output third-party-licenses
+          python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
+          Copy-Item "README-Windows.txt" "dist\BreakBlocks Launcher\README.txt"
+          Copy-Item "LICENSE", "PRIVACY.md", "TERMS.md", "THIRD-PARTY-NOTICES.md" "dist\BreakBlocks Launcher"
+          Copy-Item "third-party-licenses" "dist\BreakBlocks Launcher\third-party-licenses" -Recurse
+          Rename-Item "dist\BreakBlocks Launcher" "BreakBlocks-Launcher"
+          Compress-Archive -Path "dist\BreakBlocks-Launcher" -DestinationPath "BreakBlocks-Launcher-$env:VERSION-Windows-UNSIGNED-x86_64.zip" -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-unsigned-test-package
+          path: BreakBlocks-Launcher-*-Windows-UNSIGNED-x86_64.zip
+          if-no-files-found: error
+          retention-days: 14
+
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Tk and build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes python3-tk
+          python -m pip install -r requirements-dev.txt
+      - name: Read version
+        run: echo "VERSION=$(python -c 'from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)')" >> "$GITHUB_ENV"
+      - name: Check formatting and tests
+        run: |
+          python -m black --check --line-length 100 *.py tests tools
+          python -m ruff check *.py tests tools
+          export PYTHONPATH="$PWD"
+          for test_file in tests/test_*.py; do python "$test_file"; done
+      - name: Build Linux test packages
+        run: |
+          python tools/collect_dependency_licenses.py --output third-party-licenses
+          python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
+          cp README.txt "dist/BreakBlocks Launcher/README.txt"
+          cp LICENSE PRIVACY.md TERMS.md THIRD-PARTY-NOTICES.md "dist/BreakBlocks Launcher/"
+          cp -R fonts "dist/BreakBlocks Launcher/fonts"
+          cp -R third-party-licenses "dist/BreakBlocks Launcher/third-party-licenses"
+          mv "dist/BreakBlocks Launcher" dist/BreakBlocks-Launcher
+          chmod +x "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
+          tar -C dist -czf "BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64.tar.gz" BreakBlocks-Launcher
+          ./packaging/linux/build-deb.sh
+          cp "dist-release/BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-packages
+          path: |
+            BreakBlocks-Launcher-*-Ubuntu-amd64.deb
+            BreakBlocks-Launcher-*-SteamDeck-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 14

@@ -1,36 +1,8 @@
-# Python
 __pycache__/
 *.py[cod]
-*.pyd
+.pytest_cache/
 .venv/
-venv/
-
-# Build and packaged runtimes
 build/
 dist/
-package/
-package-windows/
-runtime/
-vendor/
-certs/
+*.spec.bak
 
-# Local launcher data and credentials
-launcher.json
-accounts.json
-*.token
-*.secret
-skins/
-instances/
-jre/
-
-# Logs and temporary files
-*.log
-*.tmp
-*.bak
-
-# Editors and operating systems
-.idea/
-.vscode/
-.DS_Store
-Thumbs.db
-desktop.ini
