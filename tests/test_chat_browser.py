@@ -23,6 +23,27 @@ def test_profile_directory_is_private_and_persistent():
             assert profile.stat().st_mode & 0o777 == 0o700
 
 
+def test_only_the_secure_breakblocks_chat_origin_is_trusted():
+    assert chat_browser.is_trusted_chat_origin("https://irc.breakblocks.com")
+    assert chat_browser.is_trusted_chat_origin("https://irc.breakblocks.com/#/connect")
+    assert not chat_browser.is_trusted_chat_origin("http://irc.breakblocks.com")
+    assert not chat_browser.is_trusted_chat_origin("https://evil.example")
+    assert not chat_browser.is_trusted_chat_origin("https://irc.breakblocks.com.evil.example")
+
+
+def test_chat_notification_counter_only_increments_while_chat_is_hidden():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        unread = root / chat_browser.UNREAD_FILE_NAME
+        visible = root / chat_browser.VISIBLE_FILE_NAME
+        assert chat_browser.record_chat_notification(unread, visible) == 1
+        assert chat_browser.record_chat_notification(unread, visible) == 2
+        visible.write_text("visible\n", encoding="utf-8")
+        assert chat_browser.record_chat_notification(unread, visible) == 2
+        assert chat_browser.write_unread_count(unread, 0) == 0
+        assert chat_browser.read_unread_count(unread) == 0
+
+
 def test_browser_process_does_not_quit_when_reparented_into_tk():
     application = SimpleNamespace()
     application.setQuitOnLastWindowClosed = lambda value: setattr(
@@ -96,7 +117,32 @@ def test_launcher_starts_browser_with_a_dedicated_local_profile():
         shutdown = Path(command[command.index("--shutdown-file") + 1])
         assert shutdown.parent == profile
         assert not shutdown.exists()
+        unread = Path(command[command.index("--unread-file") + 1])
+        visible = Path(command[command.index("--visible-file") + 1])
+        assert unread == profile / chat_browser.UNREAD_FILE_NAME
+        assert visible == profile / chat_browser.VISIBLE_FILE_NAME
         assert "--url" not in command
+
+
+def test_browser_grants_and_presents_breakblocks_notifications():
+    source = inspect.getsource(chat_browser.run_browser)
+    assert "PersistentPermissionsPolicy.StoreOnDisk" in source
+    assert "setPushServiceEnabled(True)" in source
+    assert "queryPermission" in source
+    assert "PermissionType.Notifications" in source
+    assert "page.permissionRequested.connect" in source
+    assert "permission.deny()" in source
+    assert "setNotificationPresenter" in source
+    assert "record_chat_notification" in source
+
+
+def test_launcher_restores_and_clears_the_chat_unread_badge():
+    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
+    show_page_source = inspect.getsource(zazu_launcher.Launcher.show_page)
+    monitor_source = inspect.getsource(zazu_launcher.Launcher.monitor_chat_browser)
+    assert "chat_unread_badge" in sidebar_source
+    assert 'set_chat_page_visible(name == "Chat")' in show_page_source
+    assert "refresh_chat_unread_badge" in monitor_source
 
 
 def test_native_irc_transport_and_credentials_are_not_used_by_launcher():

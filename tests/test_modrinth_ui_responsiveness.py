@@ -157,6 +157,7 @@ def test_page_switch_unmaps_old_page_before_mapping_new_page():
             pack_forget=lambda: None,
         ),
         nav_buttons={"Chat": passive, "Settings": passive},
+        set_chat_page_visible=lambda _visible: None,
     )
     zazu_launcher.Launcher.show_page(launcher, "Settings")
     assert operations == [("hide", "Chat"), ("show", "Settings")]
