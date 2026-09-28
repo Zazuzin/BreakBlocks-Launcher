@@ -23,6 +23,21 @@ def test_profile_directory_is_private_and_persistent():
             assert profile.stat().st_mode & 0o777 == 0o700
 
 
+def test_browser_process_does_not_quit_when_reparented_into_tk():
+    application = SimpleNamespace()
+    application.setQuitOnLastWindowClosed = lambda value: setattr(
+        application, "quit_on_last_window", value
+    )
+    chat_browser.configure_application_lifecycle(application)
+    assert application.quit_on_last_window is False
+
+
+def test_windows_host_uses_qt_foreign_window_parenting():
+    source = inspect.getsource(chat_browser.NativeHost._attach_windows)
+    assert "QWindow.fromWinId" in source
+    assert "user32.SetParent" not in source
+
+
 def test_parent_handle_validation_rejects_invalid_values():
     assert chat_browser.parse_parent_handle("123") == 123
     assert chat_browser.parse_parent_handle("0x20") == 32

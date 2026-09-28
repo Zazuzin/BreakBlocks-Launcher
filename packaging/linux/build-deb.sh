@@ -68,6 +68,6 @@ find "$package_root" -type f -exec chmod 0644 {} +
 chmod 0755 "$package_root/usr/bin/breakblocks-launcher" "$debian_root/postinst" "$debian_root/postrm"
 
 mkdir -p "$output_dir"
-package="$output_dir/BreakBlocks-Launcher-0.9.7-Ubuntu-amd64.deb"
+package="$output_dir/BreakBlocks-Launcher-0.9.8-Ubuntu-amd64.deb"
 dpkg-deb --build --root-owner-group "$package_root" "$package"
 echo "Created $package"

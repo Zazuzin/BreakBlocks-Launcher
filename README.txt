@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.7 Alpha - Linux/Steam Deck test build
+BreakBlocks Launcher 0.9.8 Alpha - Linux/Steam Deck test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -12,7 +12,7 @@ Install
 This portable package includes its Python and Tk runtime. Java is selected or
 downloaded separately for each Minecraft version when required.
 
-Highlights in 0.9.7
+Highlights in 0.9.8
 -------------------
 - Replaced the native IRC client with the authenticated BreakBlocks web chat.
 - Embedded the website directly in the Chat page and retained its login cookie
@@ -36,7 +36,7 @@ Highlights in 0.9.7
 
 Important release note
 ----------------------
-Update checks activate after 0.9.7 is published as a GitHub Release with
+Update checks activate after 0.9.8 is published as a GitHub Release with
 breakblocks-update.json and the matching platform packages. The launcher
 verifies the package before installation. Ubuntu asks for the normal
 administrator approval; portable Steam Deck builds replace themselves and

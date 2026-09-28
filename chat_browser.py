@@ -14,9 +14,19 @@ import ctypes
 import os
 import pathlib
 import sys
+import traceback
 
 CHAT_URL = "https://irc.breakblocks.com/#/connect"
 PROFILE_DIRECTORY_NAME = "web-chat-profile"
+
+
+def log_browser_message(message: str) -> None:
+    print(f"Embedded chat browser: {message}", flush=True)
+
+
+def configure_application_lifecycle(application) -> None:
+    """Keep Qt alive after its window becomes a child of the Tk launcher."""
+    application.setQuitOnLastWindowClosed(False)
 
 
 def parse_parent_handle(value: str) -> int:
@@ -42,9 +52,11 @@ def prepare_profile_directory(path: pathlib.Path) -> pathlib.Path:
 class NativeHost:
     """Attach and resize a Qt window inside an existing native parent."""
 
-    def __init__(self, parent_handle: int, child_handle: int):
+    def __init__(self, parent_handle: int, child_handle: int, qt_view=None):
         self.parent_handle = parent_handle
         self.child_handle = child_handle
+        self.qt_view = qt_view
+        self._foreign_parent = None
         self._display = None
         self._x11 = None
 
@@ -63,39 +75,43 @@ class NativeHost:
         return self._resize_x11()
 
     def _attach_windows(self) -> None:
+        """Attach through Qt's supported foreign-window API.
+
+        Raw Win32 SetParent works for many ordinary windows, but it leaves Qt
+        unaware that its QWebEngineView became a child of the Tk window.  Qt
+        can then tear down its final top-level window and stop the event loop
+        with exit code 0.  QWindow.fromWinId represents the Tk HWND inside Qt,
+        so Qt owns the child relationship and keeps the web view alive.
+        """
+        if self.qt_view is None:
+            raise RuntimeError("The Windows web chat host requires its Qt view")
+
+        from PySide6.QtGui import QWindow
+
         user32 = ctypes.WinDLL("user32", use_last_error=True)
         window_handle = ctypes.c_void_p
         user32.IsWindow.argtypes = (window_handle,)
         user32.IsWindow.restype = ctypes.c_int
-        user32.SetParent.argtypes = (window_handle, window_handle)
-        user32.SetParent.restype = window_handle
-        get_style = user32.GetWindowLongPtrW
-        set_style = user32.SetWindowLongPtrW
-        get_style.argtypes = (window_handle, ctypes.c_int)
-        get_style.restype = ctypes.c_ssize_t
-        set_style.argtypes = (window_handle, ctypes.c_int, ctypes.c_ssize_t)
-        set_style.restype = ctypes.c_ssize_t
         if not user32.IsWindow(self.parent_handle) or not user32.IsWindow(self.child_handle):
             raise OSError("The launcher chat window is no longer available")
-        ctypes.set_last_error(0)
-        previous_parent = user32.SetParent(self.child_handle, self.parent_handle)
-        if not previous_parent:
-            error = ctypes.get_last_error()
-            if error:
-                raise OSError(error, "Could not attach the web chat window")
-        style = get_style(self.child_handle, -16)
-        style = (style | 0x40000000 | 0x10000000) & ~(
-            0x80000000 | 0x00C00000 | 0x00040000 | 0x00080000
-        )
-        set_style(self.child_handle, -16, style)
-        self._resize_windows()
+
+        foreign_parent = QWindow.fromWinId(self.parent_handle)
+        child_window = self.qt_view.windowHandle()
+        if foreign_parent is None or child_window is None:
+            raise RuntimeError("Qt could not represent the launcher chat window")
+        child_window.setParent(foreign_parent)
+        self._foreign_parent = foreign_parent
+        self.child_handle = int(self.qt_view.winId())
+        self.qt_view.show()
+        if not self._resize_windows():
+            raise OSError("The launcher chat window could not be sized")
 
     def _resize_windows(self) -> bool:
         user32 = ctypes.WinDLL("user32", use_last_error=True)
         window_handle = ctypes.c_void_p
         user32.IsWindow.argtypes = (window_handle,)
         user32.IsWindow.restype = ctypes.c_int
-        if not user32.IsWindow(self.parent_handle):
+        if not user32.IsWindow(self.parent_handle) or not user32.IsWindow(self.child_handle):
             return False
 
         class Rect(ctypes.Structure):
@@ -108,21 +124,15 @@ class NativeHost:
 
         user32.GetClientRect.argtypes = (window_handle, ctypes.POINTER(Rect))
         user32.GetClientRect.restype = ctypes.c_int
-        user32.MoveWindow.argtypes = (
-            window_handle,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_int,
-        )
-        user32.MoveWindow.restype = ctypes.c_int
         rectangle = Rect()
         if not user32.GetClientRect(self.parent_handle, ctypes.byref(rectangle)):
-            return False
+            # A valid host HWND can be temporarily unavailable while Tk is
+            # changing page layout.  Keep the browser alive and retry.
+            return True
         width = max(1, rectangle.right - rectangle.left)
         height = max(1, rectangle.bottom - rectangle.top)
-        return bool(user32.MoveWindow(self.child_handle, 0, 0, width, height, True))
+        self.qt_view.setGeometry(0, 0, width, height)
+        return True
 
     def _attach_x11(self) -> None:
         self._x11 = ctypes.cdll.LoadLibrary("libX11.so.6")
@@ -223,7 +233,7 @@ def run_browser(
 
     profile_directory = prepare_profile_directory(profile_directory)
     application = QApplication.instance() or QApplication(sys.argv[:1])
-    application.setQuitOnLastWindowClosed(False)
+    configure_application_lifecycle(application)
     application.setApplicationName("BreakBlocks Chat")
     application.setOrganizationName("BreakBlocks")
 
@@ -242,25 +252,39 @@ def run_browser(
     view.resize(900, 600)
     view.show()
 
-    host = NativeHost(parent_handle, int(view.winId()))
+    host = NativeHost(parent_handle, int(view.winId()), qt_view=view)
     host.attach()
+    log_browser_message(
+        f"attached child window {int(view.winId())} to launcher host {parent_handle}"
+    )
 
     timer = QTimer(view)
+    unavailable_checks = 0
 
     def keep_in_host() -> None:
+        nonlocal unavailable_checks
         if shutdown_file.is_file():
+            log_browser_message("received launcher shutdown request")
             timer.stop()
             view.close()
             application.quit()
             return
         if not host.resize():
-            timer.stop()
-            application.quit()
+            unavailable_checks += 1
+            if unavailable_checks >= 20:
+                log_browser_message("launcher host or embedded window is no longer available")
+                timer.stop()
+                application.quit()
+            return
+        unavailable_checks = 0
 
     timer.timeout.connect(keep_in_host)
     timer.start(150)
     view.load(QUrl(CHAT_URL))
-    return application.exec()
+    log_browser_message(f"loading {CHAT_URL}")
+    return_code = application.exec()
+    log_browser_message(f"event loop stopped with exit code {return_code}")
+    return return_code
 
 
 def main(arguments: list[str] | None = None) -> int:
@@ -270,11 +294,16 @@ def main(arguments: list[str] | None = None) -> int:
     parser.add_argument("--profile-directory", required=True, type=pathlib.Path)
     parser.add_argument("--shutdown-file", required=True, type=pathlib.Path)
     options = parser.parse_args(arguments)
-    return run_browser(
-        options.parent_handle,
-        options.profile_directory,
-        options.shutdown_file,
-    )
+    try:
+        return run_browser(
+            options.parent_handle,
+            options.profile_directory,
+            options.shutdown_file,
+        )
+    except Exception:
+        log_browser_message("could not start or remain attached")
+        traceback.print_exc()
+        return 1
 
 
 if __name__ == "__main__":
