@@ -56,7 +56,6 @@ class NativeHost:
         self.parent_handle = parent_handle
         self.child_handle = child_handle
         self.qt_view = qt_view
-        self._foreign_parent = None
         self._display = None
         self._x11 = None
 
@@ -75,44 +74,114 @@ class NativeHost:
         return self._resize_x11()
 
     def _attach_windows(self) -> None:
-        """Attach through Qt's supported foreign-window API.
+        """Attach the browser HWND to the Tk host HWND.
 
-        Raw Win32 SetParent works for many ordinary windows, but it leaves Qt
-        unaware that its QWebEngineView became a child of the Tk window.  Qt
-        can then tear down its final top-level window and stop the event loop
-        with exit code 0.  QWindow.fromWinId represents the Tk HWND inside Qt,
-        so Qt owns the child relationship and keeps the web view alive.
+        The launcher and browser deliberately run in separate processes, so a
+        Qt foreign-window parent is not sufficient on Windows: it can leave the
+        QWebEngineView as an ordinary external top-level window.  Win32
+        SetParent is the native cross-process embedding mechanism.  The resize
+        timer refreshes and reattaches the HWND if Qt recreates it while the
+        page is loading.
         """
         if self.qt_view is None:
             raise RuntimeError("The Windows web chat host requires its Qt view")
-
-        from PySide6.QtGui import QWindow
-
-        user32 = ctypes.WinDLL("user32", use_last_error=True)
-        window_handle = ctypes.c_void_p
-        user32.IsWindow.argtypes = (window_handle,)
-        user32.IsWindow.restype = ctypes.c_int
-        if not user32.IsWindow(self.parent_handle) or not user32.IsWindow(self.child_handle):
-            raise OSError("The launcher chat window is no longer available")
-
-        foreign_parent = QWindow.fromWinId(self.parent_handle)
-        child_window = self.qt_view.windowHandle()
-        if foreign_parent is None or child_window is None:
-            raise RuntimeError("Qt could not represent the launcher chat window")
-        child_window.setParent(foreign_parent)
-        self._foreign_parent = foreign_parent
         self.child_handle = int(self.qt_view.winId())
         self.qt_view.show()
+        if not self._embed_windows_child():
+            raise OSError("The launcher chat window could not be embedded")
         if not self._resize_windows():
             raise OSError("The launcher chat window could not be sized")
 
-    def _resize_windows(self) -> bool:
+    def _windows_api(self):
         user32 = ctypes.WinDLL("user32", use_last_error=True)
         window_handle = ctypes.c_void_p
         user32.IsWindow.argtypes = (window_handle,)
         user32.IsWindow.restype = ctypes.c_int
-        if not user32.IsWindow(self.parent_handle) or self.qt_view is None:
+        user32.GetParent.argtypes = (window_handle,)
+        user32.GetParent.restype = window_handle
+        user32.SetParent.argtypes = (window_handle, window_handle)
+        user32.SetParent.restype = window_handle
+        user32.GetWindowLongPtrW.argtypes = (window_handle, ctypes.c_int)
+        user32.GetWindowLongPtrW.restype = ctypes.c_ssize_t
+        user32.SetWindowLongPtrW.argtypes = (
+            window_handle,
+            ctypes.c_int,
+            ctypes.c_ssize_t,
+        )
+        user32.SetWindowLongPtrW.restype = ctypes.c_ssize_t
+        user32.SetWindowPos.argtypes = (
+            window_handle,
+            window_handle,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_uint,
+        )
+        user32.SetWindowPos.restype = ctypes.c_int
+        return user32, window_handle
+
+    def _embed_windows_child(self, user32=None) -> bool:
+        if self.qt_view is None:
             return False
+        if user32 is None:
+            user32, _ = self._windows_api()
+
+        child_handle = int(self.qt_view.winId())
+        if not user32.IsWindow(self.parent_handle) or not user32.IsWindow(child_handle):
+            return False
+
+        # SetParent does not alter WS_CHILD/WS_POPUP itself.  Apply the child
+        # style explicitly so Windows keeps the browser inside the launcher,
+        # out of Alt+Tab and off the taskbar.
+        style = user32.GetWindowLongPtrW(child_handle, -16)
+        child_style = (style | 0x40000000 | 0x10000000) & ~(
+            0x80000000 | 0x00C00000 | 0x00040000 | 0x00080000 | 0x00020000 | 0x00010000
+        )
+        user32.SetWindowLongPtrW(child_handle, -16, child_style)
+        extended_style = user32.GetWindowLongPtrW(child_handle, -20)
+        user32.SetWindowLongPtrW(child_handle, -20, extended_style & ~0x00040000)
+
+        ctypes.set_last_error(0)
+        user32.SetParent(child_handle, self.parent_handle)
+        if user32.GetParent(child_handle) != self.parent_handle:
+            return False
+
+        # Recalculate the non-client area after changing the native styles,
+        # show the browser, and place it above the launcher's loading fallback.
+        user32.SetWindowPos(
+            child_handle,
+            0,
+            0,
+            0,
+            0,
+            0,
+            0x0001 | 0x0002 | 0x0010 | 0x0020 | 0x0040,
+        )
+
+        self.child_handle = child_handle
+        return True
+
+    def _resize_windows(self) -> bool:
+        user32, window_handle = self._windows_api()
+        if not user32.IsWindow(self.parent_handle):
+            return False
+
+        if self.qt_view is None:
+            return False
+
+        child_handle = int(self.qt_view.winId())
+        if not user32.IsWindow(child_handle):
+            # Qt can briefly replace its native handle while WebEngine starts.
+            # Keep the process alive and retry on the next timer tick.
+            return True
+        if (
+            child_handle != self.child_handle
+            or user32.GetParent(child_handle) != self.parent_handle
+        ):
+            self.child_handle = child_handle
+            if not self._embed_windows_child(user32):
+                return True
 
         class Rect(ctypes.Structure):
             _fields_ = (
@@ -124,6 +193,15 @@ class NativeHost:
 
         user32.GetClientRect.argtypes = (window_handle, ctypes.POINTER(Rect))
         user32.GetClientRect.restype = ctypes.c_int
+        user32.MoveWindow.argtypes = (
+            window_handle,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+        )
+        user32.MoveWindow.restype = ctypes.c_int
         rectangle = Rect()
         if not user32.GetClientRect(self.parent_handle, ctypes.byref(rectangle)):
             # A valid host HWND can be temporarily unavailable while Tk is
@@ -131,8 +209,7 @@ class NativeHost:
             return True
         width = max(1, rectangle.right - rectangle.left)
         height = max(1, rectangle.bottom - rectangle.top)
-        self.qt_view.setGeometry(0, 0, width, height)
-        return True
+        return bool(user32.MoveWindow(child_handle, 0, 0, width, height, True))
 
     def _attach_x11(self) -> None:
         self._x11 = ctypes.cdll.LoadLibrary("libX11.so.6")

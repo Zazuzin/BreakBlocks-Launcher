@@ -32,16 +32,22 @@ def test_browser_process_does_not_quit_when_reparented_into_tk():
     assert application.quit_on_last_window is False
 
 
-def test_windows_host_uses_qt_foreign_window_parenting():
+def test_windows_host_uses_native_cross_process_parenting():
     source = inspect.getsource(chat_browser.NativeHost._attach_windows)
-    assert "QWindow.fromWinId" in source
-    assert "user32.SetParent" not in source
+    embed_source = inspect.getsource(chat_browser.NativeHost._embed_windows_child)
+    assert "_embed_windows_child" in source
+    assert "SetParent" in embed_source
+    assert "0x40000000" in embed_source  # WS_CHILD
+    assert "GetParent" in embed_source
+    assert "SetWindowPos" in embed_source
 
 
-def test_windows_resize_does_not_treat_qt_child_handle_as_dead():
+def test_windows_resize_refreshes_and_reattaches_qt_child_handle():
     source = inspect.getsource(chat_browser.NativeHost._resize_windows)
     assert "IsWindow(self.parent_handle)" in source
-    assert "IsWindow(self.child_handle)" not in source
+    assert "int(self.qt_view.winId())" in source
+    assert "_embed_windows_child" in source
+    assert "MoveWindow" in source
 
 
 def test_parent_handle_validation_rejects_invalid_values():

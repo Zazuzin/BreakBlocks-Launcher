@@ -1,10 +1,10 @@
-BreakBlocks Launcher 0.9.9 Alpha - Ubuntu amd64 package
+BreakBlocks Launcher 0.9.10 Alpha - Ubuntu amd64 package
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
 
 Install with:
-  sudo apt install ./BreakBlocks-Launcher-0.9.9-Ubuntu-amd64.deb
+  sudo apt install ./BreakBlocks-Launcher-0.9.10-Ubuntu-amd64.deb
 
 Future updates can be installed from the launcher's update prompt. The package
 is downloaded and verified first, then Ubuntu asks for administrator approval.

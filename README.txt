@@ -1,84 +1,101 @@
-BreakBlocks Launcher 0.9.9 Alpha - Linux/Steam Deck test build
+name: Build private test packages
 
-NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
-MOJANG OR MICROSOFT.
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "build/0.9.10-windows-chat-embed"
 
-Install
--------
-1. Extract the complete archive.
-2. Make "BreakBlocks Launcher" executable if your file manager requests it.
-3. Open "BreakBlocks Launcher" and choose Execute.
+permissions:
+  contents: read
 
-This portable package includes its Python and Tk runtime. Java is selected or
-downloaded separately for each Minecraft version when required.
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build dependencies
+        run: python -m pip install -r requirements-dev.txt
+      - name: Read version
+        shell: pwsh
+        run: |
+          $version = python -c "from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)"
+          "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
+      - name: Format and run Windows-safe tests
+        shell: pwsh
+        run: |
+          python -m black --line-length 100 *.py tests tools
+          python -m ruff check --fix *.py tests tools
+          $env:PYTHONPATH = (Get-Location).Path
+          python -m compileall -q .
+          @(
+            "tests/test_chat_browser.py"
+          ) | ForEach-Object {
+            python $_
+            if ($LASTEXITCODE) { exit $LASTEXITCODE }
+          }
+      - name: Build unsigned Windows test package
+        shell: pwsh
+        run: |
+          python tools/collect_dependency_licenses.py --output third-party-licenses
+          python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
+          Copy-Item "README-Windows.txt" "dist\BreakBlocks Launcher\README.txt"
+          Copy-Item "LICENSE", "PRIVACY.md", "TERMS.md", "THIRD-PARTY-NOTICES.md" "dist\BreakBlocks Launcher"
+          Copy-Item "third-party-licenses" "dist\BreakBlocks Launcher\third-party-licenses" -Recurse
+          Rename-Item "dist\BreakBlocks Launcher" "BreakBlocks-Launcher"
+          Compress-Archive -Path "dist\BreakBlocks-Launcher" -DestinationPath "BreakBlocks-Launcher-$env:VERSION-Windows-UNSIGNED-x86_64.zip" -CompressionLevel Optimal
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-unsigned-test-package
+          path: BreakBlocks-Launcher-*-Windows-UNSIGNED-x86_64.zip
+          if-no-files-found: error
+          retention-days: 14
 
-Highlights in 0.9.9
--------------------
-- Replaced the native IRC client with the authenticated BreakBlocks web chat.
-- Embedded the website directly in the Chat page and retained its login cookie
-  and site preferences in a dedicated local browser profile.
-- Removed the obsolete launcher IRC password, nickname, connection, formatting,
-  and notification settings.
-- Added launcher-specific Privacy, Terms, third-party notices, and a release
-  readiness checklist based on the launcher's actual data flows.
-- Made the Mojang/Microsoft non-affiliation notice prominent in the launcher and
-  release documentation.
-- Offline profiles now require a Microsoft account whose Minecraft: Java
-  Edition ownership has been verified on this installation.
-- Added direct About-page links to the legal documents, Minecraft EULA, Usage
-  Guidelines, Microsoft Privacy Statement, and BreakBlocks contact route.
-- Restricted the launcher data directory to the current user where the operating
-  system supports POSIX permissions.
-- Added release-time collection and validation of bundled dependency licences.
-- Made Stable the default update channel; Alpha remains available as an opt-in.
-- Added verified one-click updates for installed Ubuntu packages and portable
-  Steam Deck installations.
-
-Important release note
-----------------------
-Update checks activate after 0.9.9 is published as a GitHub Release with
-breakblocks-update.json and the matching platform packages. The launcher
-verifies the package before installation. Ubuntu asks for the normal
-administrator approval; portable Steam Deck builds replace themselves and
-restart. This local test archive is not a signed public release.
-
-Data and logs
--------------
-New data: ~/.local/share/breakblocks-launcher
-Legacy data, when already present: ~/.local/share/zazu-launcher
-Launcher log: ~/.local/state/breakblocks-launcher/launcher.log
-Minecraft log: <data directory>/instances/<instance>/latest-launch.log
-
-The launcher retains the three newest launch logs for each instance. If
-Minecraft crashes, it offers controls to view or copy the report and open the
-instance's crash-reports folder. Crash information is never uploaded automatically.
-
-Microsoft tokens are stored in launcher.json for sign-in and token refresh. Do
-not share this file or the launcher data folder. See PRIVACY.md for the complete
-local-storage and network-service description.
-
-BreakBlocks Chat
-----------------
-The Chat page loads https://irc.breakblocks.com/#/connect inside the launcher.
-Sign in using the BreakBlocks website. Its cookie and site preferences are kept
-in the local web-chat-profile directory so you normally remain signed in. Use
-the website's Log out control to end the session.
-
-Legal
------
-NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR
-MICROSOFT. BreakBlocks Launcher is an independent community project.
-
-The original source code is licensed under the GNU General Public License
-version 3 only. See LICENSE. BreakBlocks branding, community artwork, and
-third-party marks are not covered unless their owners explicitly say otherwise.
-
-Minecraft and related assets are © Mojang AB. “Minecraft” is a trademark of
-Microsoft Corporation. Third-party names, logos, and trademarks belong to their
-respective owners.
-
-Project: https://github.com/Zazuzin/Zazu-Launcher
-Minecraft Usage Guidelines: https://www.minecraft.net/usage-guidelines
-Launcher privacy: PRIVACY.md
-Launcher terms: TERMS.md
-Third-party notices: THIRD-PARTY-NOTICES.md
+  linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Tk and build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes python3-tk
+          python -m pip install -r requirements-dev.txt
+      - name: Read version
+        run: echo "VERSION=$(python -c 'from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)')" >> "$GITHUB_ENV"
+      - name: Format and test
+        run: |
+          python -m black --line-length 100 *.py tests tools
+          python -m ruff check --fix *.py tests tools
+          export PYTHONPATH="$PWD"
+          for test_file in tests/test_*.py; do python "$test_file"; done
+      - name: Build Linux test packages
+        run: |
+          python tools/collect_dependency_licenses.py --output third-party-licenses
+          python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
+          cp README.txt "dist/BreakBlocks Launcher/README.txt"
+          cp LICENSE PRIVACY.md TERMS.md THIRD-PARTY-NOTICES.md "dist/BreakBlocks Launcher/"
+          cp -R fonts "dist/BreakBlocks Launcher/fonts"
+          cp -R third-party-licenses "dist/BreakBlocks Launcher/third-party-licenses"
+          mv "dist/BreakBlocks Launcher" dist/BreakBlocks-Launcher
+          chmod +x "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
+          python -c "import shutil; shutil.make_archive('BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64', 'gztar', root_dir='dist', base_dir='BreakBlocks-Launcher')"
+          python -c "import tarfile; archive=tarfile.open('BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64.tar.gz', 'r:gz'); assert archive.getmembers(); archive.close()"
+          ./packaging/linux/build-deb.sh
+          cp "dist-release/BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" .
+          dpkg-deb --contents "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" > /dev/null
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-test-packages
+          path: |
+            BreakBlocks-Launcher-*-Ubuntu-amd64.deb
+            BreakBlocks-Launcher-*-SteamDeck-x86_64.tar.gz
+          if-no-files-found: error
+          retention-days: 14

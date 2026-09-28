@@ -11,7 +11,7 @@ sudo apt install python3 python3-pip python3-venv python3-tk curl dpkg-dev
 The finished `.deb` is written to `dist-release`. Install it with:
 
 ```bash
-sudo apt install ./dist-release/BreakBlocks-Launcher-0.9.9-Ubuntu-amd64.deb
+sudo apt install ./dist-release/BreakBlocks-Launcher-0.9.10-Ubuntu-amd64.deb
 ```
 
 This package deliberately uses Ubuntu's system Python and Tk while bundling its

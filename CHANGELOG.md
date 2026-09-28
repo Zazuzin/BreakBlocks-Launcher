@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.10 Alpha
+
+- Restored the Windows BreakBlocks web chat as a native child of the launcher's
+  Chat panel instead of a separate external window.
+- Kept the browser process alive and automatically reattaches its native window
+  if Qt recreates the handle while Chromium is loading.
+- Preserved the dedicated web-chat profile, login cookies, and unchanged Linux
+  embedding behavior.
+
 ## 0.9.6 Alpha
 
 - Replaced the launcher-owned IRC client with the authenticated BreakBlocks web
