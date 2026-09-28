@@ -21,6 +21,13 @@ PACKAGES = {
 }
 LICENCE_NAMES = ("license", "licence", "copying", "notice")
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]
+LICENCE_FALLBACKS = {
+    # Qt's PySide6 wheels declare their licence in package metadata but do not
+    # include a standalone licence file. BreakBlocks Launcher is GPL-3.0-only,
+    # so it uses PySide6's GPL-3.0-only option and ships that complete text.
+    "PySide6": PROJECT_ROOT
+    / "LICENSE",
+}
 
 
 def licence_files(distribution: importlib.metadata.Distribution) -> list[pathlib.Path]:
@@ -102,7 +109,10 @@ def collect(output: pathlib.Path) -> None:
                 )
             files = licence_files(distribution)
             if not files:
-                raise RuntimeError(f"No licence file found for {package} {required_version}")
+                fallback = LICENCE_FALLBACKS.get(package)
+                if fallback is None or not fallback.is_file():
+                    raise RuntimeError(f"No licence file found for {package} {required_version}")
+                files = [fallback]
             package_directory = staging / f"{package.lower()}-{required_version}"
             package_directory.mkdir()
             for source in files:
