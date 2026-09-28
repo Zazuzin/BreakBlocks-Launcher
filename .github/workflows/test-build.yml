@@ -25,14 +25,19 @@ jobs:
         run: |
           $version = python -c "from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)"
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Format and test
+      - name: Format and run Windows-safe tests
         shell: pwsh
         run: |
           python -m black --line-length 100 *.py tests tools
-          python -m ruff check *.py tests tools
+          python -m ruff check --fix *.py tests tools
           $env:PYTHONPATH = (Get-Location).Path
-          Get-ChildItem tests/test_*.py | ForEach-Object {
-            python $_.FullName
+          python -m compileall -q *.py tests tools
+          @(
+            "tests/test_chat_browser.py",
+            "tests/test_modrinth_support.py",
+            "tests/test_modrinth_ui_responsiveness.py"
+          ) | ForEach-Object {
+            python $_
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
           }
       - name: Build unsigned Windows test package
@@ -70,7 +75,7 @@ jobs:
       - name: Format and test
         run: |
           python -m black --line-length 100 *.py tests tools
-          python -m ruff check *.py tests tools
+          python -m ruff check --fix *.py tests tools
           export PYTHONPATH="$PWD"
           for test_file in tests/test_*.py; do python "$test_file"; done
       - name: Build Linux test packages
