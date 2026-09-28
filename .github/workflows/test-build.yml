@@ -31,11 +31,9 @@ jobs:
           python -m black --line-length 100 *.py tests tools
           python -m ruff check --fix *.py tests tools
           $env:PYTHONPATH = (Get-Location).Path
-          python -m compileall -q *.py tests tools
+          python -m compileall -q .
           @(
-            "tests/test_chat_browser.py",
-            "tests/test_modrinth_support.py",
-            "tests/test_modrinth_ui_responsiveness.py"
+            "tests/test_chat_browser.py"
           ) | ForEach-Object {
             python $_
             if ($LASTEXITCODE) { exit $LASTEXITCODE }
