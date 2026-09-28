@@ -4,7 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - "build/0.9.8-windows-chat-host"
+      - "build/0.9.9-windows-chat-host"
 
 permissions:
   contents: read

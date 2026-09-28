@@ -111,7 +111,7 @@ class NativeHost:
         window_handle = ctypes.c_void_p
         user32.IsWindow.argtypes = (window_handle,)
         user32.IsWindow.restype = ctypes.c_int
-        if not user32.IsWindow(self.parent_handle) or not user32.IsWindow(self.child_handle):
+        if not user32.IsWindow(self.parent_handle) or self.qt_view is None:
             return False
 
         class Rect(ctypes.Structure):

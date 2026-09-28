@@ -38,6 +38,12 @@ def test_windows_host_uses_qt_foreign_window_parenting():
     assert "user32.SetParent" not in source
 
 
+def test_windows_resize_does_not_treat_qt_child_handle_as_dead():
+    source = inspect.getsource(chat_browser.NativeHost._resize_windows)
+    assert "IsWindow(self.parent_handle)" in source
+    assert "IsWindow(self.child_handle)" not in source
+
+
 def test_parent_handle_validation_rejects_invalid_values():
     assert chat_browser.parse_parent_handle("123") == 123
     assert chat_browser.parse_parent_handle("0x20") == 32

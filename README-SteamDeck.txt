@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.8 Alpha - Steam Deck x86_64
+BreakBlocks Launcher 0.9.9 Alpha - Steam Deck x86_64
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -35,7 +35,7 @@ Keep the entire folder together; do not move only the launcher script.
 
 FEATURES
 --------
-The launcher has the same feature set as the Windows and Ubuntu 0.9.8 builds.
+The launcher has the same feature set as the Windows and Ubuntu 0.9.9 builds.
 Its Chat page embeds the authenticated BreakBlocks website and keeps the site
 cookie in a dedicated local profile so users normally remain signed in.
 
