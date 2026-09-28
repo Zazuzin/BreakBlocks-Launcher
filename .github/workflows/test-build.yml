@@ -86,9 +86,11 @@ jobs:
           cp -R third-party-licenses "dist/BreakBlocks Launcher/third-party-licenses"
           mv "dist/BreakBlocks Launcher" dist/BreakBlocks-Launcher
           chmod +x "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
-          tar -C dist -czf "BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64.tar.gz" BreakBlocks-Launcher
+          python -c "import shutil; shutil.make_archive('BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64', 'gztar', root_dir='dist', base_dir='BreakBlocks-Launcher')"
+          python -c "import tarfile; archive=tarfile.open('BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64.tar.gz', 'r:gz'); assert archive.getmembers(); archive.close()"
           ./packaging/linux/build-deb.sh
           cp "dist-release/BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" .
+          dpkg-deb --contents "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" > /dev/null
       - uses: actions/upload-artifact@v4
         with:
           name: linux-test-packages
