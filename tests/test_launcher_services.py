@@ -540,7 +540,7 @@ def test_manual_test_workflow_builds_but_does_not_publish_packages():
     root = Path(zazu_launcher.__file__).resolve().parent
     workflow = (root / ".github" / "workflows" / "test-build.yml").read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
-    assert '"build/0.9.7-browser-chat"' in workflow
+    assert '"build/0.9.7-browser-chat-fix"' in workflow
     assert "Windows-UNSIGNED-x86_64.zip" in workflow
     assert "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" in workflow
     assert "BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64.tar.gz" in workflow
