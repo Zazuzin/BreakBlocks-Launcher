@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.6 Alpha - Windows x64 test build
+BreakBlocks Launcher 0.9.7 Alpha - Windows x64 test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -12,7 +12,7 @@ Install
 Python and the GUI runtime are included. Java is selected or downloaded
 separately for each Minecraft version when required.
 
-Highlights in 0.9.6
+Highlights in 0.9.7
 -------------------
 - Replaced the native IRC client with the authenticated BreakBlocks web chat.
 - Embedded the website directly in the Chat page and retained its login cookie
@@ -44,7 +44,7 @@ can still take time to build for a new certificate.
 
 Automatic updates
 -----------------
-Update checks activate after 0.9.6 is published as a GitHub Release with
+Update checks activate after 0.9.7 is published as a GitHub Release with
 breakblocks-update.json and the matching Windows package. The launcher verifies
 the size and SHA-256 checksum before replacing the installation and restarting.
 

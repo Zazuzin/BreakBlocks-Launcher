@@ -8,7 +8,7 @@ instances, accounts, mods, and BreakBlocks community links. The interface is
 written in Python with Tk and CustomTkinter and is packaged for Windows and
 Linux/Steam Deck.
 
-The current development version is **0.9.6 Alpha**.
+The current development version is **0.9.7 Alpha**.
 
 ## Current features
 

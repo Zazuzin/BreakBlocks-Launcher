@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.6 Alpha
+BreakBlocks Launcher 0.9.7 Alpha
 Windows complete source review copy
 
 Start with BUILD-WINDOWS.md. This archive contains the full shared source,

@@ -223,6 +223,7 @@ def run_browser(
 
     profile_directory = prepare_profile_directory(profile_directory)
     application = QApplication.instance() or QApplication(sys.argv[:1])
+    application.setQuitOnLastWindowClosed(False)
     application.setApplicationName("BreakBlocks Chat")
     application.setOrganizationName("BreakBlocks")
 

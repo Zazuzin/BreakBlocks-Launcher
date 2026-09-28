@@ -30,7 +30,7 @@ Copy-Item $Licences (Join-Path $PackageRoot "third-party-licenses") -Recurse -Fo
 
 $Output = Join-Path $ProjectRoot "dist-release"
 New-Item -ItemType Directory -Path $Output -Force | Out-Null
-$Archive = Join-Path $Output "BreakBlocks-Launcher-0.9.6-Windows-x86_64.zip"
+$Archive = Join-Path $Output "BreakBlocks-Launcher-0.9.7-Windows-x86_64.zip"
 if (Test-Path -LiteralPath $Archive) { Remove-Item -LiteralPath $Archive -Force }
 Compress-Archive -Path $PackageRoot -DestinationPath $Archive -CompressionLevel Optimal
 Write-Host "Created $Archive"
