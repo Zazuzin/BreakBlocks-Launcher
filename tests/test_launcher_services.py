@@ -538,9 +538,7 @@ def test_release_workflow_publishes_every_update_target():
 
 def test_manual_test_workflow_builds_but_does_not_publish_packages():
     root = Path(zazu_launcher.__file__).resolve().parent
-    workflow = (root / ".github" / "workflows" / "test-build.yml").read_text(
-        encoding="utf-8"
-    )
+    workflow = (root / ".github" / "workflows" / "test-build.yml").read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
     assert '"build/0.9.6-browser-chat"' in workflow
     assert "Windows-UNSIGNED-x86_64.zip" in workflow

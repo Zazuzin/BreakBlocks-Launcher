@@ -15,7 +15,6 @@ import os
 import pathlib
 import sys
 
-
 CHAT_URL = "https://irc.breakblocks.com/#/connect"
 PROFILE_DIRECTORY_NAME = "web-chat-profile"
 
@@ -217,7 +216,7 @@ def run_browser(
         # window to become a real child of the Tk Chat host under Wayland too.
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
-    from PySide6.QtCore import QTimer, QUrl, Qt
+    from PySide6.QtCore import Qt, QTimer, QUrl
     from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
     from PySide6.QtWebEngineWidgets import QWebEngineView
     from PySide6.QtWidgets import QApplication

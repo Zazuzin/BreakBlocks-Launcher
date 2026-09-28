@@ -2935,9 +2935,7 @@ class Launcher(ctk.CTk):
         ctk.CTkButton(
             toolbar,
             text="Open in Browser",
-            command=lambda: self.open_external_url(
-                BREAKBLOCKS_CHAT_WEB_URL, "BreakBlocks Chat"
-            ),
+            command=lambda: self.open_external_url(BREAKBLOCKS_CHAT_WEB_URL, "BreakBlocks Chat"),
             width=135,
             height=38,
             corner_radius=9,

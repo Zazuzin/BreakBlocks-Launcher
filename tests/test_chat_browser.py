@@ -77,7 +77,7 @@ def test_native_irc_transport_and_credentials_are_not_used_by_launcher():
     assert "import irc_client" not in source
     assert "IrcClient(" not in source
     assert "irc_server_password" in source  # migration removes legacy saved values
-    assert 'settings.pop(obsolete_key, None)' in source
+    assert "settings.pop(obsolete_key, None)" in source
     assert not hasattr(zazu_launcher.Launcher, "connect_irc")
     assert not hasattr(zazu_launcher.Launcher, "send_irc_message")
 
