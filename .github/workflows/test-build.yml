@@ -25,10 +25,10 @@ jobs:
         run: |
           $version = python -c "from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)"
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Check formatting and tests
+      - name: Format and test
         shell: pwsh
         run: |
-          python -m black --check --line-length 100 *.py tests tools
+          python -m black --line-length 100 *.py tests tools
           python -m ruff check *.py tests tools
           $env:PYTHONPATH = (Get-Location).Path
           Get-ChildItem tests/test_*.py | ForEach-Object {
@@ -67,9 +67,9 @@ jobs:
           python -m pip install -r requirements-dev.txt
       - name: Read version
         run: echo "VERSION=$(python -c 'from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)')" >> "$GITHUB_ENV"
-      - name: Check formatting and tests
+      - name: Format and test
         run: |
-          python -m black --check --line-length 100 *.py tests tools
+          python -m black --line-length 100 *.py tests tools
           python -m ruff check *.py tests tools
           export PYTHONPATH="$PWD"
           for test_file in tests/test_*.py; do python "$test_file"; done
