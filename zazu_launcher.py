@@ -2204,6 +2204,12 @@ class Launcher(ctk.CTk):
         self.chat_browser_process = None
         self.chat_browser_monitor_id = None
         self.chat_browser_shutdown_file = None
+        chat_profile = self.store.root / chat_browser.PROFILE_DIRECTORY_NAME
+        self.chat_unread_file = chat_profile / chat_browser.UNREAD_FILE_NAME
+        self.chat_visible_file = chat_profile / chat_browser.VISIBLE_FILE_NAME
+        self.chat_unread_count = chat_browser.write_unread_count(self.chat_unread_file, 0)
+        self.chat_visible_file.unlink(missing_ok=True)
+        self.chat_unread_badge = None
         self.ui_events = queue.Queue()
         self.store_lock = threading.RLock()
         self.running_instances = {}
@@ -2620,8 +2626,10 @@ class Launcher(ctk.CTk):
             for name in ("Launcher", "Chat", "Settings", "About")
         }
         for name in ("Launcher", "Chat", "Settings", "About"):
+            nav_row = tk.Frame(nav, bg=SIDEBAR, bd=0, highlightthickness=0)
+            nav_row.pack(fill="x", pady=4)
             button = ctk.CTkButton(
-                nav,
+                nav_row,
                 text=f"  {name}",
                 image=self.nav_icon_images[name],
                 compound="left",
@@ -2634,8 +2642,20 @@ class Launcher(ctk.CTk):
                 text_color=MUTED,
                 font=ctk.CTkFont(self.ui_font, 14, "bold"),
             )
-            button.pack(fill="x", pady=4)
+            button.pack(fill="x")
             self.nav_buttons[name] = button
+            if name == "Chat":
+                self.chat_unread_badge = ctk.CTkLabel(
+                    nav_row,
+                    text="",
+                    width=24,
+                    height=24,
+                    corner_radius=12,
+                    fg_color=RED,
+                    text_color="#ffffff",
+                    font=ctk.CTkFont(self.ui_font, 11, "bold"),
+                )
+                self.chat_unread_badge.bind("<Button-1>", lambda _event: self.show_page("Chat"))
 
         community = tk.Frame(sidebar, bg=SIDEBAR, bd=0, highlightthickness=0)
         community.grid(row=3, column=0, sticky="sew", padx=14, pady=(10, 16))
@@ -2982,6 +3002,16 @@ class Launcher(ctk.CTk):
             f".stop-{os.getpid()}-{parent_handle}"
         )
         self.chat_browser_shutdown_file.unlink(missing_ok=True)
+        self.chat_unread_file = getattr(
+            self,
+            "chat_unread_file",
+            profile_directory / chat_browser.UNREAD_FILE_NAME,
+        )
+        self.chat_visible_file = getattr(
+            self,
+            "chat_visible_file",
+            profile_directory / chat_browser.VISIBLE_FILE_NAME,
+        )
         arguments = [
             "--chat-browser",
             "--parent-handle",
@@ -2990,6 +3020,10 @@ class Launcher(ctk.CTk):
             str(profile_directory),
             "--shutdown-file",
             str(self.chat_browser_shutdown_file),
+            "--unread-file",
+            str(self.chat_unread_file),
+            "--visible-file",
+            str(self.chat_visible_file),
         ]
         if getattr(sys, "frozen", False):
             return [sys.executable, *arguments]
@@ -3037,6 +3071,7 @@ class Launcher(ctk.CTk):
             return
         return_code = process.poll()
         if return_code is None:
+            self.refresh_chat_unread_badge()
             self.chat_browser_status.set(
                 "Secure BreakBlocks web chat — your website session stays on this device."
             )
@@ -3050,6 +3085,41 @@ class Launcher(ctk.CTk):
             "The embedded chat browser closed. Choose Reload Chat to try again."
         )
         log_launcher_message("Embedded chat browser", f"Stopped with exit code {return_code}")
+
+    def set_chat_unread_badge(self, count):
+        self.chat_unread_count = max(0, min(999, int(count)))
+        badge = self.chat_unread_badge
+        if badge is None:
+            return
+        if not self.chat_unread_count:
+            badge.place_forget()
+            return
+        badge.configure(
+            text="99+" if self.chat_unread_count > 99 else str(self.chat_unread_count),
+            width=30 if self.chat_unread_count > 99 else 24,
+        )
+        badge.place(relx=0.89, rely=0.5, anchor="center")
+        badge.lift()
+
+    def refresh_chat_unread_badge(self):
+        count = chat_browser.read_unread_count(self.chat_unread_file)
+        if self.current_page == "Chat":
+            if count:
+                chat_browser.write_unread_count(self.chat_unread_file, 0)
+            count = 0
+        self.set_chat_unread_badge(count)
+
+    def set_chat_page_visible(self, visible):
+        try:
+            if visible:
+                self.chat_visible_file.parent.mkdir(parents=True, exist_ok=True)
+                self.chat_visible_file.write_text("visible\n", encoding="utf-8")
+                chat_browser.write_unread_count(self.chat_unread_file, 0)
+                self.set_chat_unread_badge(0)
+                return
+            self.chat_visible_file.unlink(missing_ok=True)
+        except OSError as error:
+            log_launcher_error("Updating chat visibility", error)
 
     def stop_chat_browser(self):
         if self.chat_browser_monitor_id is not None:
@@ -3078,6 +3148,7 @@ class Launcher(ctk.CTk):
         except OSError as error:
             log_launcher_error("Stopping embedded chat browser", error)
         finally:
+            self.chat_visible_file.unlink(missing_ok=True)
             if shutdown_file is not None:
                 shutdown_file.unlink(missing_ok=True)
 
@@ -3593,6 +3664,7 @@ class Launcher(ctk.CTk):
         if target_page.winfo_manager() != "grid":
             target_page.grid(row=0, column=0, sticky="nsew")
         self.current_page = name
+        self.set_chat_page_visible(name == "Chat")
         if name == "Chat":
             self.ensure_chat_browser()
         if name == "Launcher" and hasattr(self, "launch_dashboard"):

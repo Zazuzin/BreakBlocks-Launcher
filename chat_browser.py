@@ -15,9 +15,13 @@ import os
 import pathlib
 import sys
 import traceback
+import urllib.parse
 
 CHAT_URL = "https://irc.breakblocks.com/#/connect"
+CHAT_ORIGIN = "https://irc.breakblocks.com"
 PROFILE_DIRECTORY_NAME = "web-chat-profile"
+UNREAD_FILE_NAME = "unread-notifications.count"
+VISIBLE_FILE_NAME = ".chat-visible"
 
 
 def log_browser_message(message: str) -> None:
@@ -47,6 +51,51 @@ def prepare_profile_directory(path: pathlib.Path) -> pathlib.Path:
     except OSError:
         pass
     return profile
+
+
+def is_trusted_chat_origin(origin) -> bool:
+    """Return whether a WebEngine permission belongs to BreakBlocks chat."""
+    value = origin.toString() if hasattr(origin, "toString") else str(origin)
+    try:
+        parsed = urllib.parse.urlsplit(value)
+        port = parsed.port
+    except (TypeError, ValueError):
+        return False
+    return (
+        parsed.scheme.lower() == "https"
+        and (parsed.hostname or "").lower() == "irc.breakblocks.com"
+        and port in (None, 443)
+    )
+
+
+def read_unread_count(path: pathlib.Path) -> int:
+    try:
+        return max(0, min(999, int(path.read_text(encoding="utf-8").strip())))
+    except (OSError, TypeError, ValueError):
+        return 0
+
+
+def write_unread_count(path: pathlib.Path, count: int) -> int:
+    """Atomically update the tiny counter shared with the Tk launcher."""
+    value = max(0, min(999, int(count)))
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(f".{path.name}.{os.getpid()}.tmp")
+    try:
+        temporary.write_text(f"{value}\n", encoding="utf-8")
+        os.replace(temporary, path)
+    finally:
+        try:
+            temporary.unlink(missing_ok=True)
+        except OSError:
+            pass
+    return value
+
+
+def record_chat_notification(unread_file: pathlib.Path, visible_file: pathlib.Path) -> int:
+    """Increment unread chat while the launcher's Chat page is not visible."""
+    if visible_file.is_file():
+        return read_unread_count(unread_file)
+    return write_unread_count(unread_file, read_unread_count(unread_file) + 1)
 
 
 class NativeHost:
@@ -297,16 +346,30 @@ def run_browser(
     parent_handle: int,
     profile_directory: pathlib.Path,
     shutdown_file: pathlib.Path,
+    unread_file: pathlib.Path,
+    visible_file: pathlib.Path,
 ) -> int:
     if sys.platform.startswith("linux"):
         # Tk runs through X11/XWayland.  Matching that backend permits the Qt
         # window to become a real child of the Tk Chat host under Wayland too.
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
-    from PySide6.QtCore import Qt, QTimer, QUrl
-    from PySide6.QtWebEngineCore import QWebEnginePage, QWebEngineProfile
+    from PySide6.QtCore import QPoint, Qt, QTimer, QUrl
+    from PySide6.QtGui import QMouseEvent, QPixmap
+    from PySide6.QtWebEngineCore import (
+        QWebEnginePage,
+        QWebEnginePermission,
+        QWebEngineProfile,
+    )
     from PySide6.QtWebEngineWidgets import QWebEngineView
-    from PySide6.QtWidgets import QApplication
+    from PySide6.QtWidgets import (
+        QApplication,
+        QHBoxLayout,
+        QLabel,
+        QPushButton,
+        QVBoxLayout,
+        QWidget,
+    )
 
     profile_directory = prepare_profile_directory(profile_directory)
     application = QApplication.instance() or QApplication(sys.argv[:1])
@@ -318,9 +381,124 @@ def run_browser(
     profile.setPersistentStoragePath(str(profile_directory / "storage"))
     profile.setCachePath(str(profile_directory / "cache"))
     profile.setPersistentCookiesPolicy(QWebEngineProfile.ForcePersistentCookies)
+    profile.setPersistentPermissionsPolicy(
+        QWebEngineProfile.PersistentPermissionsPolicy.StoreOnDisk
+    )
+    profile.setPushServiceEnabled(True)
     profile.setHttpUserAgent(f"{profile.httpUserAgent()} BreakBlocks-Launcher")
 
     page = QWebEnginePage(profile, application)
+
+    notification_type = QWebEnginePermission.PermissionType.Notifications
+    profile.queryPermission(QUrl(CHAT_ORIGIN), notification_type).grant()
+
+    def handle_permission_request(permission) -> None:
+        if permission.permissionType() != notification_type:
+            return
+        if is_trusted_chat_origin(permission.origin()):
+            permission.grant()
+        else:
+            permission.deny()
+
+    page.permissionRequested.connect(handle_permission_request)
+
+    class ChatNotificationPopup(QWidget):
+        """Small cross-platform desktop popup for WebEngine notifications."""
+
+        def __init__(self):
+            super().__init__(None)
+            self.notification = None
+            self.setWindowFlags(
+                Qt.WindowType.ToolTip
+                | Qt.WindowType.FramelessWindowHint
+                | Qt.WindowType.WindowStaysOnTopHint
+            )
+            self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
+            self.setMinimumWidth(340)
+            self.setStyleSheet(
+                "QWidget { background: #242424; color: #f2f2f2; "
+                "border: 1px solid #4b4b4b; border-radius: 8px; } "
+                "QLabel { border: none; background: transparent; } "
+                "QPushButton { border: none; background: transparent; "
+                "color: #b8b8b8; font-weight: bold; padding: 3px 7px; } "
+                "QPushButton:hover { color: white; }"
+            )
+            outer = QHBoxLayout(self)
+            outer.setContentsMargins(14, 12, 10, 12)
+            outer.setSpacing(12)
+            self.icon_label = QLabel()
+            self.icon_label.setFixedSize(42, 42)
+            outer.addWidget(self.icon_label)
+            text_layout = QVBoxLayout()
+            text_layout.setSpacing(3)
+            self.title_label = QLabel()
+            self.title_label.setStyleSheet("font-weight: 700; font-size: 13px;")
+            self.message_label = QLabel()
+            self.message_label.setWordWrap(True)
+            self.message_label.setMaximumWidth(360)
+            text_layout.addWidget(self.title_label)
+            text_layout.addWidget(self.message_label)
+            outer.addLayout(text_layout, 1)
+            close_button = QPushButton("×")
+            close_button.clicked.connect(lambda _checked=False: self.close_notification())
+            outer.addWidget(close_button, 0, Qt.AlignmentFlag.AlignTop)
+
+        def present(self, notification) -> None:
+            if self.notification is not None:
+                self.close_notification()
+            self.notification = notification
+            self.title_label.setText(notification.title() or "BreakBlocks Chat")
+            self.message_label.setText(notification.message())
+            icon = QPixmap.fromImage(notification.icon())
+            if not icon.isNull():
+                self.icon_label.setPixmap(
+                    icon.scaled(
+                        self.icon_label.size(),
+                        Qt.AspectRatioMode.KeepAspectRatio,
+                        Qt.TransformationMode.SmoothTransformation,
+                    )
+                )
+                self.icon_label.show()
+            else:
+                self.icon_label.hide()
+            notification.closed.connect(self.close_notification)
+            self.adjustSize()
+            screen = QApplication.primaryScreen()
+            if screen is not None:
+                corner = screen.availableGeometry().bottomRight()
+                self.move(corner - QPoint(self.width() + 18, self.height() + 18))
+            self.show()
+            notification.show()
+            QTimer.singleShot(
+                10000,
+                lambda current=notification: self.close_if_current(current),
+            )
+
+        def close_if_current(self, notification) -> None:
+            if self.notification is notification:
+                self.close_notification()
+
+        def close_notification(self) -> None:
+            notification = self.notification
+            self.notification = None
+            self.hide()
+            if notification is not None:
+                notification.close()
+
+        def mouseReleaseEvent(self, event: QMouseEvent) -> None:
+            super().mouseReleaseEvent(event)
+            if self.notification is not None and event.button() == Qt.MouseButton.LeftButton:
+                self.notification.click()
+                self.close_notification()
+
+    notification_popup = ChatNotificationPopup()
+
+    def present_notification(notification) -> None:
+        record_chat_notification(unread_file, visible_file)
+        notification_popup.present(notification)
+
+    profile.setNotificationPresenter(present_notification)
+
     view = QWebEngineView()
     view.setPage(page)
     view.setWindowTitle("BreakBlocks Chat")
@@ -370,12 +548,16 @@ def main(arguments: list[str] | None = None) -> int:
     parser.add_argument("--parent-handle", required=True, type=parse_parent_handle)
     parser.add_argument("--profile-directory", required=True, type=pathlib.Path)
     parser.add_argument("--shutdown-file", required=True, type=pathlib.Path)
+    parser.add_argument("--unread-file", required=True, type=pathlib.Path)
+    parser.add_argument("--visible-file", required=True, type=pathlib.Path)
     options = parser.parse_args(arguments)
     try:
         return run_browser(
             options.parent_handle,
             options.profile_directory,
             options.shutdown_file,
+            options.unread_file,
+            options.visible_file,
         )
     except Exception:
         log_browser_message("could not start or remain attached")

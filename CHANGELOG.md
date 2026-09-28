@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.11 Alpha
+
+- Allowed notification permission only for the secure BreakBlocks chat origin
+  and stored the choice in the dedicated web-chat profile.
+- Added a launcher-styled desktop popup for new website chat notifications.
+- Restored the unread-message badge beside Chat while another launcher page is
+  open; opening Chat clears the count.
+
 ## 0.9.10 Alpha
 
 - Restored the Windows BreakBlocks web chat as a native child of the launcher's
