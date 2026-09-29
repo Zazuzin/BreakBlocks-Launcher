@@ -2210,6 +2210,7 @@ class Launcher(ctk.CTk):
         self.chat_unread_count = chat_browser.write_unread_count(self.chat_unread_file, 0)
         self.chat_visible_file.unlink(missing_ok=True)
         self.chat_unread_badge = None
+        self.chat_context_menu = None
         self.ui_events = queue.Queue()
         self.store_lock = threading.RLock()
         self.running_instances = {}
@@ -2645,6 +2646,7 @@ class Launcher(ctk.CTk):
             button.pack(fill="x")
             self.nav_buttons[name] = button
             if name == "Chat":
+                button.bind("<Button-3>", self.show_chat_context_menu)
                 self.chat_unread_badge = ctk.CTkLabel(
                     nav_row,
                     text="",
@@ -2656,6 +2658,25 @@ class Launcher(ctk.CTk):
                     font=ctk.CTkFont(self.ui_font, 11, "bold"),
                 )
                 self.chat_unread_badge.bind("<Button-1>", lambda _event: self.show_page("Chat"))
+                self.chat_unread_badge.bind("<Button-3>", self.show_chat_context_menu)
+
+                self.chat_context_menu = tk.Menu(
+                    self,
+                    tearoff=False,
+                    bg=CONTROL_SURFACE,
+                    fg=TEXT,
+                    activebackground=ACCENT,
+                    activeforeground="#ffffff",
+                    borderwidth=1,
+                    relief="flat",
+                    font=(self.ui_font, 11),
+                )
+                self.chat_context_menu.add_command(
+                    label="Open in browser",
+                    command=lambda: self.open_external_url(
+                        BREAKBLOCKS_CHAT_WEB_URL, "BreakBlocks Chat"
+                    ),
+                )
 
         community = tk.Frame(sidebar, bg=SIDEBAR, bd=0, highlightthickness=0)
         community.grid(row=3, column=0, sticky="sew", padx=14, pady=(10, 16))
@@ -2791,6 +2812,7 @@ class Launcher(ctk.CTk):
 
         footer = tk.Frame(main, height=38, bg=DEEP_SURFACE, bd=0, highlightthickness=0)
         footer.grid(row=2, column=0, sticky="ew")
+        self.main_footer = footer
         self.status = tk.StringVar(value="Ready")
         ctk.CTkLabel(
             footer, textvariable=self.status, text_color=MUTED, font=self.font_small, anchor="w"
@@ -2806,6 +2828,16 @@ class Launcher(ctk.CTk):
             self.show_notice(
                 "Could not open link", f"Open this address manually:\n\n{url}", danger=True
             )
+
+    def show_chat_context_menu(self, event):
+        menu = self.chat_context_menu
+        if menu is None:
+            return "break"
+        try:
+            menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            menu.grab_release()
+        return "break"
 
     def open_local_document(self, filename, label):
         path = APP_DIR / filename
@@ -2926,52 +2958,19 @@ class Launcher(ctk.CTk):
 
     def chat_web_ui(self, page):
         page.grid_columnconfigure(0, weight=1)
-        page.grid_rowconfigure(1, weight=1)
+        page.grid_rowconfigure(0, weight=1)
 
-        toolbar = ctk.CTkFrame(page, fg_color="transparent")
-        toolbar.grid(row=0, column=0, sticky="ew", pady=(0, 10))
-        toolbar.grid_columnconfigure(0, weight=1)
         self.chat_browser_status = tk.StringVar(
             value="The secure BreakBlocks website handles chat sign-in."
         )
-        ctk.CTkLabel(
-            toolbar,
-            textvariable=self.chat_browser_status,
-            text_color=MUTED,
-            font=self.font_small,
-            anchor="w",
-        ).grid(row=0, column=0, sticky="ew")
-        ctk.CTkButton(
-            toolbar,
-            text="Reload Chat",
-            command=self.restart_chat_browser,
-            width=115,
-            height=38,
-            corner_radius=9,
-            fg_color=CONTROL_SURFACE,
-            hover_color=ACCENT_HOVER,
-            font=self.font_small,
-        ).grid(row=0, column=1, padx=(8, 0))
-        ctk.CTkButton(
-            toolbar,
-            text="Open in Browser",
-            command=lambda: self.open_external_url(BREAKBLOCKS_CHAT_WEB_URL, "BreakBlocks Chat"),
-            width=135,
-            height=38,
-            corner_radius=9,
-            fg_color=CONTROL_SURFACE,
-            hover_color=ACCENT_HOVER,
-            font=self.font_small,
-        ).grid(row=0, column=2, padx=(8, 0))
 
         self.chat_browser_host = tk.Frame(
             page,
             bg="#181818",
             bd=0,
-            highlightthickness=1,
-            highlightbackground=BORDER,
+            highlightthickness=0,
         )
-        self.chat_browser_host.grid(row=1, column=0, sticky="nsew")
+        self.chat_browser_host.grid(row=0, column=0, sticky="nsew")
         fallback = ctk.CTkFrame(self.chat_browser_host, fg_color=DARK_SURFACE, corner_radius=0)
         fallback.pack(fill="both", expand=True)
         ctk.CTkLabel(
@@ -3640,12 +3639,20 @@ class Launcher(ctk.CTk):
         if previous_page is not None and previous_page is not target_page:
             previous_page.grid_remove()
 
-        if name == "Launcher":
+        if name == "Chat":
             self.main_header.grid_remove()
+            self.main_footer.grid_remove()
+            self.page_host.grid_configure(padx=0, pady=0)
+        elif name == "Launcher":
+            self.main_header.grid_remove()
+            if not self.main_footer.winfo_manager():
+                self.main_footer.grid()
             self.page_host.grid_configure(padx=24, pady=(24, 20))
         else:
             if not self.main_header.winfo_manager():
                 self.main_header.grid()
+            if not self.main_footer.winfo_manager():
+                self.main_footer.grid()
             self.page_host.grid_configure(padx=32, pady=(0, 20))
         self.page_title.configure(text=titles[name][0])
         subtitle = titles[name][1]

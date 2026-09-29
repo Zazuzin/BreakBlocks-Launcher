@@ -8,7 +8,7 @@ instances, accounts, mods, and BreakBlocks community links. The interface is
 written in Python with Tk and CustomTkinter and is packaged for Windows and
 Linux/Steam Deck.
 
-The current development version is **0.9.11 Alpha**.
+The current development version is **0.9.12 Alpha**.
 
 ## Current features
 
@@ -24,10 +24,9 @@ The current development version is **0.9.11 Alpha**.
   Ubuntu, and portable Linux/Steam Deck, with Stable selected by default and
   Alpha available as an opt-in channel
 - Configurable Java, memory, launch behaviour, and update preferences
-- The authenticated BreakBlocks web chat embedded directly in the Chat page,
-  with a persistent local browser profile so website sign-in and preferences
-  survive launcher restarts, secure website notifications, and an unread badge
-  beside Chat while another launcher page is open
+- The authenticated BreakBlocks web chat filling the complete area beside the
+  sidebar, with a persistent local browser profile, secure website
+  notifications, an unread badge, and a right-click Open in browser shortcut
 
 ## Run from source
 

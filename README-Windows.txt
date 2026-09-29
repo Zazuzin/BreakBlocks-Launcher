@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.11 Alpha - Windows x64 test build
+BreakBlocks Launcher 0.9.12 Alpha - Windows x64 test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -12,8 +12,10 @@ Install
 Python and the GUI runtime are included. Java is selected or downloaded
 separately for each Minecraft version when required.
 
-Highlights in 0.9.11
+Highlights in 0.9.12
 -------------------
+- Expanded the embedded chat to fill the complete area beside the sidebar.
+- Added an "Open in browser" option when Chat is right-clicked in the sidebar.
 - Enabled website notifications for only the secure BreakBlocks chat address,
   with the permission retained in the chat profile.
 - Added a desktop notification popup and restored the unread number beside Chat
@@ -52,7 +54,7 @@ can still take time to build for a new certificate.
 
 Automatic updates
 -----------------
-Update checks activate after 0.9.11 is published as a GitHub Release with
+Update checks activate after 0.9.12 is published as a GitHub Release with
 breakblocks-update.json and the matching Windows package. The launcher verifies
 the size and SHA-256 checksum before replacing the installation and restarting.
 

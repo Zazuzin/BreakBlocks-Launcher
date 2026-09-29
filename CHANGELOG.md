@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.12 Alpha
+
+- Expanded the embedded BreakBlocks chat across the entire launcher area to
+  the right of the sidebar.
+- Moved the external-browser shortcut into a right-click menu on the Chat
+  sidebar button.
+- Kept persistent website sign-in, secure notifications, and unread-message
+  counts unchanged across Windows, Ubuntu, and Steam Deck.
+
 ## 0.9.11 Alpha
 
 - Allowed notification permission only for the secure BreakBlocks chat origin
