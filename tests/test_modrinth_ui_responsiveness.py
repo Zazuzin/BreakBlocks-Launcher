@@ -148,6 +148,7 @@ def test_page_switch_unmaps_old_page_before_mapping_new_page():
         current_page="Chat",
         pages={"Chat": chat, "Settings": settings},
         main_header=SimpleNamespace(winfo_manager=lambda: "grid", grid=lambda: None),
+        main_footer=SimpleNamespace(winfo_manager=lambda: "grid", grid=lambda: None),
         page_host=SimpleNamespace(grid_configure=lambda **_kwargs: None),
         page_title=passive,
         page_subtitle=SimpleNamespace(
