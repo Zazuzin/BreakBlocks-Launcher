@@ -145,6 +145,29 @@ def test_launcher_restores_and_clears_the_chat_unread_badge():
     assert "refresh_chat_unread_badge" in monitor_source
 
 
+def test_chat_fills_the_complete_area_beside_the_sidebar():
+    chat_source = inspect.getsource(zazu_launcher.Launcher.chat_web_ui)
+    show_page_source = inspect.getsource(zazu_launcher.Launcher.show_page)
+    assert "page.grid_rowconfigure(0, weight=1)" in chat_source
+    assert 'self.chat_browser_host.grid(row=0, column=0, sticky="nsew")' in chat_source
+    assert "toolbar" not in chat_source
+    chat_layout = show_page_source.index('if name == "Chat":')
+    launcher_layout = show_page_source.index('elif name == "Launcher":')
+    chat_layout_source = show_page_source[chat_layout:launcher_layout]
+    assert "self.main_header.grid_remove()" in chat_layout_source
+    assert "self.main_footer.grid_remove()" in chat_layout_source
+    assert "self.page_host.grid_configure(padx=0, pady=0)" in chat_layout_source
+
+
+def test_chat_sidebar_button_has_open_in_browser_context_menu():
+    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
+    menu_source = inspect.getsource(zazu_launcher.Launcher.show_chat_context_menu)
+    assert 'button.bind("<Button-3>", self.show_chat_context_menu)' in sidebar_source
+    assert 'label="Open in browser"' in sidebar_source
+    assert "BREAKBLOCKS_CHAT_WEB_URL" in sidebar_source
+    assert "menu.tk_popup(event.x_root, event.y_root)" in menu_source
+
+
 def test_native_irc_transport_and_credentials_are_not_used_by_launcher():
     source = Path(zazu_launcher.__file__).read_text(encoding="utf-8")
     assert "import irc_client" not in source
