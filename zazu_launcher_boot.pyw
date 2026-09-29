@@ -3,6 +3,10 @@ import pathlib
 import sys
 import traceback
 
+from display_environment import enable_windows_per_monitor_dpi
+
+enable_windows_per_monitor_dpi()
+
 APP_DIR = pathlib.Path(__file__).resolve().parent
 PACKAGE_DIR = APP_DIR.parent
 RUNTIME_DIR = PACKAGE_DIR / "runtime"

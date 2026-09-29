@@ -27,6 +27,10 @@ VENDOR_DIR = APP_DIR / "vendor"
 if VENDOR_DIR.is_dir():
     sys.path.insert(0, str(VENDOR_DIR))
 
+from display_environment import enable_windows_per_monitor_dpi
+
+enable_windows_per_monitor_dpi()
+
 import tkinter as tk
 import tkinter.font as tkfont
 from tkinter import filedialog
@@ -2653,12 +2657,31 @@ class Launcher(ctk.CTk):
                     width=24,
                     height=24,
                     corner_radius=12,
+                    bg_color=SIDEBAR,
                     fg_color=RED,
                     text_color="#ffffff",
                     font=ctk.CTkFont(self.ui_font, 11, "bold"),
                 )
                 self.chat_unread_badge.bind("<Button-1>", lambda _event: self.show_page("Chat"))
                 self.chat_unread_badge.bind("<Button-3>", self.show_chat_context_menu)
+                button.bind(
+                    "<Enter>",
+                    lambda _event: self.update_chat_unread_badge_background(True),
+                    add=True,
+                )
+                button.bind(
+                    "<Leave>",
+                    lambda _event: self.update_chat_unread_badge_background(False),
+                    add=True,
+                )
+                self.chat_unread_badge.bind(
+                    "<Enter>",
+                    lambda _event: self.update_chat_unread_badge_background(True),
+                )
+                self.chat_unread_badge.bind(
+                    "<Leave>",
+                    lambda _event: self.update_chat_unread_badge_background(False),
+                )
 
                 self.chat_context_menu = tk.Menu(
                     self,
@@ -3097,8 +3120,19 @@ class Launcher(ctk.CTk):
             text="99+" if self.chat_unread_count > 99 else str(self.chat_unread_count),
             width=30 if self.chat_unread_count > 99 else 24,
         )
+        self.update_chat_unread_badge_background(False)
         badge.place(relx=0.89, rely=0.5, anchor="center")
         badge.lift()
+
+    def update_chat_unread_badge_background(self, hovered=False):
+        badge = self.chat_unread_badge
+        if badge is None:
+            return
+        if self.current_page == "Chat":
+            background = SURFACE_ALT
+        else:
+            background = SURFACE_HOVER if hovered else SIDEBAR
+        badge.configure(bg_color=background)
 
     def refresh_chat_unread_badge(self):
         count = chat_browser.read_unread_count(self.chat_unread_file)

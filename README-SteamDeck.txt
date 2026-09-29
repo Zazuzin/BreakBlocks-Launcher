@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.12 Alpha - Steam Deck x86_64
+BreakBlocks Launcher 0.9.13 Alpha - Steam Deck x86_64
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -35,12 +35,14 @@ Keep the entire folder together; do not move only the launcher script.
 
 FEATURES
 --------
-The launcher has the same feature set as the Windows and Ubuntu 0.9.12 builds.
+The launcher has the same feature set as the Windows and Ubuntu 0.9.13 builds.
 Its Chat page embeds the authenticated BreakBlocks website and keeps the site
 cookie in a dedicated local profile so users normally remain signed in. Chat
 fills the complete area beside the sidebar, where right-clicking Chat provides
 an Open in browser option. Secure website notifications add to the unread
 number beside Chat while another launcher page is open; opening Chat clears it.
+Notifications use the BBC chicken logo and a wider eight-second popup. The
+unread number blends with the Chat button in its normal and highlighted states.
 
 RUNTIME
 -------

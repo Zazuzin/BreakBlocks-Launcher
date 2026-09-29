@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.13 Alpha
+
+- Sharpened Windows text, rounded corners, and icons on scaled displays by
+  enabling native per-monitor DPI rendering before the interface starts.
+- Redesigned chat notifications with the BBC chicken logo, a compact
+  `name · #channel` heading, a wider message area, and an eight-second display.
+- Matched the unread badge corners to the Chat button in its normal, hovered,
+  and selected states on Windows, Ubuntu, and Steam Deck.
+
 ## 0.9.12 Alpha
 
 - Expanded the embedded BreakBlocks chat across the entire launcher area to

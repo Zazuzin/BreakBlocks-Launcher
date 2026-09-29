@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.12 Alpha - synchronized source package
+BreakBlocks Launcher 0.9.13 Alpha - synchronized source package
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.

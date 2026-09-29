@@ -13,6 +13,7 @@ import argparse
 import ctypes
 import os
 import pathlib
+import re
 import sys
 import traceback
 import urllib.parse
@@ -22,6 +23,36 @@ CHAT_ORIGIN = "https://irc.breakblocks.com"
 PROFILE_DIRECTORY_NAME = "web-chat-profile"
 UNREAD_FILE_NAME = "unread-notifications.count"
 VISIBLE_FILE_NAME = ".chat-visible"
+
+
+def notification_logo_path() -> pathlib.Path | None:
+    """Return the bundled BBC chicken logo when it is available."""
+    roots = []
+    frozen_root = getattr(sys, "_MEIPASS", None)
+    if frozen_root:
+        roots.append(pathlib.Path(frozen_root))
+    roots.extend(
+        (
+            pathlib.Path(__file__).resolve().parent,
+            pathlib.Path(sys.executable).resolve().parent,
+        )
+    )
+    for root in roots:
+        candidate = root / "assets" / "community" / "bbc_chicken_transparent.png"
+        if candidate.is_file():
+            return candidate
+    return None
+
+
+def format_notification_title(title: str) -> str:
+    """Turn the website notification title into a compact launcher heading."""
+    value = str(title or "").strip()
+    match = re.match(r"^(.+?)\s*\((#[^)]+)\)\s+says:\s*$", value, re.IGNORECASE)
+    if match:
+        nickname, channel = (part.strip() for part in match.groups())
+        return f"{nickname} · {channel}"
+    value = re.sub(r"\s+says:\s*$", "", value, flags=re.IGNORECASE).strip()
+    return value or "BreakBlocks Chat"
 
 
 def log_browser_message(message: str) -> None:
@@ -414,7 +445,7 @@ def run_browser(
                 | Qt.WindowType.WindowStaysOnTopHint
             )
             self.setAttribute(Qt.WidgetAttribute.WA_ShowWithoutActivating, True)
-            self.setMinimumWidth(340)
+            self.setMinimumWidth(390)
             self.setStyleSheet(
                 "QWidget { background: #242424; color: #f2f2f2; "
                 "border: 1px solid #4b4b4b; border-radius: 8px; } "
@@ -427,7 +458,7 @@ def run_browser(
             outer.setContentsMargins(14, 12, 10, 12)
             outer.setSpacing(12)
             self.icon_label = QLabel()
-            self.icon_label.setFixedSize(42, 42)
+            self.icon_label.setFixedSize(46, 46)
             outer.addWidget(self.icon_label)
             text_layout = QVBoxLayout()
             text_layout.setSpacing(3)
@@ -435,7 +466,7 @@ def run_browser(
             self.title_label.setStyleSheet("font-weight: 700; font-size: 13px;")
             self.message_label = QLabel()
             self.message_label.setWordWrap(True)
-            self.message_label.setMaximumWidth(360)
+            self.message_label.setMaximumWidth(420)
             text_layout.addWidget(self.title_label)
             text_layout.addWidget(self.message_label)
             outer.addLayout(text_layout, 1)
@@ -447,9 +478,10 @@ def run_browser(
             if self.notification is not None:
                 self.close_notification()
             self.notification = notification
-            self.title_label.setText(notification.title() or "BreakBlocks Chat")
+            self.title_label.setText(format_notification_title(notification.title()))
             self.message_label.setText(notification.message())
-            icon = QPixmap.fromImage(notification.icon())
+            logo_path = notification_logo_path()
+            icon = QPixmap(str(logo_path)) if logo_path is not None else QPixmap()
             if not icon.isNull():
                 self.icon_label.setPixmap(
                     icon.scaled(
@@ -470,7 +502,7 @@ def run_browser(
             self.show()
             notification.show()
             QTimer.singleShot(
-                10000,
+                8000,
                 lambda current=notification: self.close_if_current(current),
             )
 
