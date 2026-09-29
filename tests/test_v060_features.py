@@ -8,13 +8,14 @@ from types import SimpleNamespace
 
 from PIL import Image
 
+import display_environment
 import mod_sources
 import zazu_launcher
 
 
 def test_block_icon_catalogue():
     assert zazu_launcher.APP_NAME == "BreakBlocks Launcher"
-    assert zazu_launcher.APP_VERSION == "0.9.12 Alpha"
+    assert zazu_launcher.APP_VERSION == "0.9.13 Alpha"
     assert len(zazu_launcher.BLOCK_ICONS) == 25
     assert len(zazu_launcher.BLOCK_ICON_KEYS) == 25
     asset_root = Path(zazu_launcher.__file__).resolve().parent / "assets" / "instance_icons"
@@ -133,6 +134,23 @@ def test_breakblocks_branding_assets_are_packaged_and_used():
     assert '"BreakBlocks.Launcher"' in source
     assert "self.iconphoto(True, self.window_icon)" in source
     assert "image=self.brand_image" not in source
+
+
+def test_windows_enables_native_per_monitor_dpi_before_tk_loads():
+    app_root = Path(zazu_launcher.__file__).resolve().parent
+    launcher_source = (app_root / "zazu_launcher.py").read_text(encoding="utf-8")
+    boot_source = (app_root / "zazu_launcher_boot.pyw").read_text(encoding="utf-8")
+    assert launcher_source.index("enable_windows_per_monitor_dpi()") < launcher_source.index(
+        "import tkinter as tk"
+    )
+    assert boot_source.index("enable_windows_per_monitor_dpi()") < boot_source.index(
+        "from zazu_launcher import Launcher"
+    )
+    dpi_source = inspect.getsource(display_environment.enable_windows_per_monitor_dpi)
+    assert "SetProcessDpiAwarenessContext" in dpi_source
+    assert "ctypes.c_void_p(-4)" in dpi_source
+    if os.name != "nt":
+        assert display_environment.enable_windows_per_monitor_dpi() is False
 
 
 def test_fixed_launcher_layout_matches_the_requested_three_columns():

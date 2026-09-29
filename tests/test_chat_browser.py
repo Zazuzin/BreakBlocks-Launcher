@@ -136,6 +136,24 @@ def test_browser_grants_and_presents_breakblocks_notifications():
     assert "record_chat_notification" in source
 
 
+def test_chat_notification_uses_launcher_branding_and_compact_title():
+    assert (
+        chat_browser.format_notification_title("im_zazuzin (#BreakBlocks) says:")
+        == "im_zazuzin · #BreakBlocks"
+    )
+    assert chat_browser.format_notification_title("Etianl says:") == "Etianl"
+    assert chat_browser.format_notification_title("") == "BreakBlocks Chat"
+    logo = chat_browser.notification_logo_path()
+    assert logo is not None
+    assert logo.name == "bbc_chicken_transparent.png"
+    assert logo.is_file()
+    source = inspect.getsource(chat_browser.run_browser)
+    assert "notification_logo_path()" in source
+    assert "format_notification_title(notification.title())" in source
+    assert "self.setMinimumWidth(390)" in source
+    assert "QTimer.singleShot(\n                8000," in source
+
+
 def test_launcher_restores_and_clears_the_chat_unread_badge():
     sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
     show_page_source = inspect.getsource(zazu_launcher.Launcher.show_page)
@@ -143,6 +161,16 @@ def test_launcher_restores_and_clears_the_chat_unread_badge():
     assert "chat_unread_badge" in sidebar_source
     assert 'set_chat_page_visible(name == "Chat")' in show_page_source
     assert "refresh_chat_unread_badge" in monitor_source
+
+
+def test_chat_unread_badge_matches_sidebar_and_hover_backgrounds():
+    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
+    update_source = inspect.getsource(zazu_launcher.Launcher.update_chat_unread_badge_background)
+    assert "bg_color=SIDEBAR" in sidebar_source
+    assert 'button.bind(\n                    "<Enter>"' in sidebar_source
+    assert 'button.bind(\n                    "<Leave>"' in sidebar_source
+    assert "SURFACE_HOVER if hovered else SIDEBAR" in update_source
+    assert "badge.configure(bg_color=background)" in update_source
 
 
 def test_chat_fills_the_complete_area_beside_the_sidebar():
