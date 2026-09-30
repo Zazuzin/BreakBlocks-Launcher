@@ -1,6 +1,6 @@
 [project]
 name = "breakblocks-launcher"
-version = "0.9.14"
+version = "0.9.15"
 description = "Independent Minecraft launcher for the BreakBlocks community"
 license = "GPL-3.0-only"
 requires-python = ">=3.10"
