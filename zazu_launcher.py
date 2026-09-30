@@ -2395,6 +2395,7 @@ class Launcher(ctk.CTk):
         if os.name == "nt" and pid is not None:
             self.overlay_game_pids[ident] = pid
             self.write_chat_game_processes()
+            log_launcher_message("Chat overlay", f"Minecraft started with PID {pid}")
             self.ensure_chat_browser()
         self.refresh_instances()
         if not self.store.data["settings"].get("keep_launcher_open", True):
@@ -6018,7 +6019,10 @@ class Launcher(ctk.CTk):
                 self.post_ui(
                     lambda: (
                         self.mark_instance_running(ident, started, process.pid),
-                        self.status.set("Minecraft launched with " + account["name"]),
+                        self.status.set(
+                            "Minecraft launched with " + account["name"]
+                            + " — press Ctrl+Shift+F9 in Minecraft for chat"
+                        ),
                     )
                 )
                 exit_code = process.wait()
