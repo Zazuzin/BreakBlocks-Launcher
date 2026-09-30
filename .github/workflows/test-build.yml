@@ -6,6 +6,7 @@ on:
     branches:
       - "build/0.9.13-ui-polish"
       - "build/0.9.14-windows-chat-overlay"
+      - "build/0.9.15-windows-single-archive"
 
 permissions:
   contents: read
@@ -49,11 +50,13 @@ jobs:
           Copy-Item "LICENSE", "PRIVACY.md", "TERMS.md", "THIRD-PARTY-NOTICES.md" "dist\BreakBlocks Launcher"
           Copy-Item "third-party-licenses" "dist\BreakBlocks Launcher\third-party-licenses" -Recurse
           Rename-Item "dist\BreakBlocks Launcher" "BreakBlocks-Launcher"
-          Compress-Archive -Path "dist\BreakBlocks-Launcher" -DestinationPath "BreakBlocks-Launcher-$env:VERSION-Windows-UNSIGNED-x86_64.zip" -CompressionLevel Optimal
+          if (-not (Test-Path -LiteralPath "dist\BreakBlocks-Launcher\BreakBlocks Launcher.exe")) {
+            throw "The Windows executable is missing from the build."
+          }
       - uses: actions/upload-artifact@v4
         with:
-          name: windows-unsigned-test-package
-          path: BreakBlocks-Launcher-*-Windows-UNSIGNED-x86_64.zip
+          name: BreakBlocks-Launcher-0.9.15-Windows-test
+          path: dist/BreakBlocks-Launcher/
           if-no-files-found: error
           retention-days: 14
 
