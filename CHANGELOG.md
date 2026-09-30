@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.15 Alpha (Windows archive test)
+
+- Packaged the Windows GitHub Actions build as one archive containing the
+  application files directly, with no second ZIP inside it.
+- Kept the 0.9.14 Windows chat overlay for testing.
+
 ## 0.9.14 Alpha (Windows overlay test)
 
 - Added a launcher-managed hotkey overlay for Minecraft sessions started on Windows.
