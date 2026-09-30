@@ -124,17 +124,42 @@ def write_unread_count(path: pathlib.Path, count: int) -> int:
     return value
 
 
+def launcher_has_foreground(launcher_handle: int, user32=None) -> bool:
+    """Check the launcher window itself, not whether its Chat tab is selected."""
+    if user32 is None:
+        if os.name != "nt":
+            return True
+        user32 = ctypes.WinDLL("user32", use_last_error=True)
+        user32.GetForegroundWindow.restype = ctypes.c_void_p
+        user32.GetAncestor.argtypes = (ctypes.c_void_p, ctypes.c_uint)
+        user32.GetAncestor.restype = ctypes.c_void_p
+    foreground = user32.GetForegroundWindow()
+    if not foreground:
+        return False
+    launcher_root = user32.GetAncestor(launcher_handle, 2)  # GA_ROOT
+    return bool(launcher_root) and launcher_root == user32.GetAncestor(foreground, 2)
+
+
+def chat_page_is_visible(
+    visible_file: pathlib.Path, launcher_handle: int, user32=None,
+) -> bool:
+    return visible_file.is_file() and launcher_has_foreground(launcher_handle, user32)
+
+
 def record_chat_notification(
     unread_file: pathlib.Path,
     visible_file: pathlib.Path,
     overlay_visible_file: pathlib.Path | None = None,
     *,
     overlay_visible: bool | None = None,
+    chat_visible: bool | None = None,
 ) -> int:
-    """Increment unread chat unless the launcher page or overlay is visible."""
+    """Increment unread chat unless the launcher page or overlay is being viewed."""
     if overlay_visible is None:
         overlay_visible = overlay_visible_file is not None and overlay_visible_file.is_file()
-    if visible_file.is_file() or overlay_visible:
+    if chat_visible is None:
+        chat_visible = visible_file.is_file()
+    if chat_visible or overlay_visible:
         return read_unread_count(unread_file)
     return write_unread_count(unread_file, read_unread_count(unread_file) + 1)
 
@@ -405,7 +430,7 @@ def run_browser(
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
     from PySide6.QtCore import QPoint, Qt, QTimer, QUrl
-    from PySide6.QtGui import QMouseEvent, QPixmap
+    from PySide6.QtGui import QCursor, QMouseEvent, QPixmap
     from PySide6.QtWebEngineCore import (
         QWebEnginePage,
         QWebEnginePermission,
@@ -464,7 +489,7 @@ def run_browser(
             super().__init__(None)
             self.notification = None
             self.setWindowFlags(
-                Qt.WindowType.ToolTip
+                Qt.WindowType.Tool
                 | Qt.WindowType.FramelessWindowHint
                 | Qt.WindowType.WindowStaysOnTopHint
             )
@@ -519,11 +544,26 @@ def run_browser(
                 self.icon_label.hide()
             notification.closed.connect(self.close_notification)
             self.adjustSize()
-            screen = QApplication.primaryScreen()
+            screen = QApplication.screenAt(QCursor.pos()) or QApplication.primaryScreen()
             if screen is not None:
                 corner = screen.availableGeometry().bottomRight()
                 self.move(corner - QPoint(self.width() + 18, self.height() + 18))
             self.show()
+            if os.name == "nt":
+                user32 = ctypes.WinDLL("user32", use_last_error=True)
+                user32.SetWindowPos.argtypes = (
+                    ctypes.c_void_p, ctypes.c_void_p,
+                    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint,
+                )
+                user32.SetWindowPos.restype = ctypes.c_int
+                if not user32.SetWindowPos(
+                    int(self.winId()), -1, 0, 0, 0, 0,
+                    0x0001 | 0x0002 | 0x0010 | 0x0040,
+                ):
+                    log_browser_message(
+                        f"notification popup could not be raised: "
+                        f"Windows error {ctypes.get_last_error()}"
+                    )
             notification.show()
             QTimer.singleShot(
                 8000,
@@ -552,13 +592,14 @@ def run_browser(
 
     def present_notification(notification) -> None:
         overlay_open = overlay is not None and overlay.visible
+        chat_visible = chat_page_is_visible(visible_file, parent_handle)
         count = record_chat_notification(
             unread_file, visible_file, overlay_visible_file,
-            overlay_visible=overlay_open,
+            overlay_visible=overlay_open, chat_visible=chat_visible,
         )
         log_browser_message(
             f"notification received; unread={count}; overlay_open={overlay_open}; "
-            f"launcher_chat_visible={visible_file.is_file()}"
+            f"launcher_chat_visible={chat_visible}"
         )
         notification_popup.present(notification)
 
