@@ -1,4 +1,5 @@
 import contextlib
+import ctypes
 import inspect
 import io
 import os
@@ -44,6 +45,21 @@ def test_chat_notification_counter_only_increments_while_chat_is_hidden():
         assert chat_browser.read_unread_count(unread) == 0
 
 
+def test_stale_overlay_marker_does_not_suppress_new_messages():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        unread = root / chat_browser.UNREAD_FILE_NAME
+        launcher_visible = root / chat_browser.VISIBLE_FILE_NAME
+        stale_overlay_marker = root / chat_browser.OVERLAY_VISIBLE_FILE_NAME
+        stale_overlay_marker.write_text("visible\n", encoding="ascii")
+        assert chat_browser.record_chat_notification(
+            unread, launcher_visible, stale_overlay_marker, overlay_visible=False
+        ) == 1
+        assert chat_browser.record_chat_notification(
+            unread, launcher_visible, stale_overlay_marker, overlay_visible=True
+        ) == 1
+
+
 def test_browser_process_does_not_quit_when_reparented_into_tk():
     application = SimpleNamespace()
     application.setQuitOnLastWindowClosed = lambda value: setattr(
@@ -69,6 +85,38 @@ def test_windows_resize_refreshes_and_reattaches_qt_child_handle():
     assert "int(self.qt_view.winId())" in source
     assert "_embed_windows_child" in source
     assert "MoveWindow" in source
+
+
+def test_windows_resize_skips_unchanged_geometry_and_resizes_after_parent_change():
+    dimensions = [640, 480]
+    moves = []
+    host = chat_browser.NativeHost(99, 77, qt_view=SimpleNamespace(winId=lambda: 77))
+
+    def get_client_rect(_parent, rect):
+        rect._obj.right, rect._obj.bottom = dimensions
+        return 1
+
+    def move_window(*args):
+        moves.append(args)
+        return 1
+
+    fake_api = SimpleNamespace(
+        IsWindow=lambda _handle: True,
+        GetParent=lambda _child: host.parent_handle,
+        GetClientRect=get_client_rect,
+        MoveWindow=move_window,
+    )
+    host._windows_api = lambda: (fake_api, ctypes.c_void_p)
+    assert host._resize_windows()
+    assert len(moves) == 1
+    assert host._resize_windows()
+    assert len(moves) == 1
+    dimensions[0] = 800
+    assert host._resize_windows()
+    assert len(moves) == 2
+    host.parent_handle = 100
+    assert host._resize_windows()
+    assert len(moves) == 3
 
 
 def test_parent_handle_validation_rejects_invalid_values():
