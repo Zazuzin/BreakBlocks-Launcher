@@ -9,6 +9,7 @@ on:
       - "build/0.9.15-windows-single-archive"
       - "build/0.9.16-windows-overlay-hotkey"
       - "build/0.9.17-windows-overlay-redraw"
+      - "build/0.9.18-windows-chat-notifications"
 
 permissions:
   contents: read
@@ -57,7 +58,7 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: BreakBlocks-Launcher-0.9.17-Windows-test
+          name: BreakBlocks-Launcher-0.9.18-Windows-test
           path: dist/BreakBlocks-Launcher/
           if-no-files-found: error
           retention-days: 14
