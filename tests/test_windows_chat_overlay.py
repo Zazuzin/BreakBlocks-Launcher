@@ -1,10 +1,12 @@
 """Small cross-process checks for the Windows chat overlay."""
 
+import ctypes
 import tempfile
+from ctypes import wintypes
 from pathlib import Path
 
 import chat_browser
-from windows_chat_overlay import read_game_pids
+from windows_chat_overlay import HOTKEY_ID, WM_HOTKEY, is_overlay_hotkey, read_game_pids
 
 
 def test_game_process_list_ignores_partial_and_invalid_entries():
@@ -13,6 +15,18 @@ def test_game_process_list_ignores_partial_and_invalid_entries():
         assert read_game_pids(path) == set()
         path.write_text("812\n0\n-6\nnot-a-pid\n1214\n", encoding="ascii")
         assert read_game_pids(path) == {812, 1214}
+
+
+def test_hotkey_from_window_or_dispatcher_reaches_overlay():
+    message = wintypes.MSG()
+    message.message = WM_HOTKEY
+    message.wParam = HOTKEY_ID
+    address = ctypes.addressof(message)
+    assert is_overlay_hotkey(b"windows_generic_MSG", address)
+    assert is_overlay_hotkey(b"windows_dispatcher_MSG", address)
+    message.wParam = HOTKEY_ID + 1
+    assert not is_overlay_hotkey(b"windows_generic_MSG", address)
+    assert not is_overlay_hotkey(b"xcb_generic_event_t", address)
 
 
 def test_chat_notifications_are_not_unread_while_overlay_is_visible():
@@ -30,4 +44,5 @@ def test_chat_notifications_are_not_unread_while_overlay_is_visible():
 
 if __name__ == "__main__":
     test_game_process_list_ignores_partial_and_invalid_entries()
+    test_hotkey_from_window_or_dispatcher_reaches_overlay()
     test_chat_notifications_are_not_unread_while_overlay_is_visible()
