@@ -183,6 +183,14 @@ class WindowsChatOverlay(QObject):
             print(f"Chat overlay: Minecraft window is too small: {width}x{height}", flush=True)
             return
         self.game_window = handle
+        self.window.resize(round(width * 0.8), round(height * 0.84))
+        # Move the live web view before showing the overlay, so it does not
+        # appear as an empty window while Windows reparents the browser.
+        self.host.parent_handle = int(self.browser_area.winId())
+        if not self.host._embed_windows_child():
+            print("Chat overlay: could not move the chat window into the overlay", flush=True)
+            self.host.parent_handle = self.launcher_handle
+            return
         self.window.show()
         # Use native window coordinates so mixed-DPI monitors position correctly.
         positioned = self.user32.SetWindowPos(
@@ -190,22 +198,17 @@ class WindowsChatOverlay(QObject):
             bounds.left + round(width * 0.1), bounds.top + round(height * 0.08),
             round(width * 0.8), round(height * 0.84), 0x0040,
         )
-        if not positioned:
+        if not positioned or not self.host.resize():
             print(
-                f"Chat overlay: positioning failed (Windows error "
-                f"{ctypes.get_last_error()})",
+                f"Chat overlay: could not position or size chat "
+                f"(Windows error {ctypes.get_last_error()})",
                 flush=True,
             )
-            self.window.hide()
-            return
-        self.host.parent_handle = int(self.browser_area.winId())
-        if not self.host._embed_windows_child():
-            print("Chat overlay: could not move the chat window into the overlay", flush=True)
             self.host.parent_handle = self.launcher_handle
+            self.host._embed_windows_child()
+            self.host.resize()
             self.window.hide()
             return
-        if not self.host.resize():
-            print("Chat overlay: could not size the chat window", flush=True)
         self.visible = True
         self.visible_file.write_text("visible\n", encoding="ascii")
         self.mark_read()
@@ -217,17 +220,32 @@ class WindowsChatOverlay(QObject):
         if not self.visible:
             return
         self.visible = False
+        # Clear the notification suppression flag before moving the browser.
+        # Even if Windows cannot reparent it, later messages remain unread.
+        try:
+            self.visible_file.unlink(missing_ok=True)
+        except OSError as error:
+            print(f"Chat overlay: could not clear visibility marker: {error}", flush=True)
         self.host.parent_handle = self.launcher_handle
-        self.host._embed_windows_child()
-        self.host.resize()
-        self.visible_file.unlink(missing_ok=True)
-        self.window.hide()
-        print("Chat overlay: hidden", flush=True)
-        if self.game_window:
-            self.user32.SetForegroundWindow(self.game_window)
-            self.game_window = 0
+        try:
+            if not self.host._embed_windows_child():
+                print("Chat overlay: chat could not return to launcher", flush=True)
+            self.host.resize()
+        finally:
+            self.window.hide()
+            print("Chat overlay: hidden", flush=True)
+            if self.game_window:
+                self.user32.SetForegroundWindow(self.game_window)
+                self.game_window = 0
 
     def eventFilter(self, watched, event):
+        if watched is self.window and self.visible:
+            if event.type() == QEvent.Type.Close:
+                self.hide()
+                event.ignore()
+                return True
+            if event.type() == QEvent.Type.Hide:
+                self.hide()
         if self.visible and event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Escape:
             self.hide()
             return True
