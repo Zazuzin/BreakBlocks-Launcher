@@ -1,18 +1,18 @@
-BreakBlocks Launcher 0.9.14 Alpha - Windows x64 overlay test build
+BreakBlocks Launcher 0.9.15 Alpha - Windows x64 overlay test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
 
 Install
 -------
-1. Extract the complete ZIP. Do not run the launcher inside the ZIP.
-2. Open the extracted BreakBlocks-Launcher folder.
+1. Extract the GitHub Actions ZIP into a new BreakBlocks-Launcher folder.
+2. Open that extracted folder. Keep the executable and _internal folder together.
 3. Double-click "BreakBlocks Launcher.exe".
 
 Python and the GUI runtime are included. Java is selected or downloaded
 separately for each Minecraft version when required.
 
-Windows overlay test in 0.9.14
+Windows overlay test in 0.9.15
 ------------------------------
 - Launch Minecraft from BreakBlocks, then press Ctrl+Shift+F9 while its window
   is active to bring the signed-in web chat over the game. Reply in the same
