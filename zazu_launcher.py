@@ -2211,6 +2211,9 @@ class Launcher(ctk.CTk):
         chat_profile = self.store.root / chat_browser.PROFILE_DIRECTORY_NAME
         self.chat_unread_file = chat_profile / chat_browser.UNREAD_FILE_NAME
         self.chat_visible_file = chat_profile / chat_browser.VISIBLE_FILE_NAME
+        self.chat_game_file = chat_profile / chat_browser.GAME_PROCESS_FILE_NAME
+        self.overlay_game_pids = {}
+        self.chat_game_file.unlink(missing_ok=True)
         self.chat_unread_count = chat_browser.write_unread_count(self.chat_unread_file, 0)
         self.chat_visible_file.unlink(missing_ok=True)
         self.chat_unread_badge = None
@@ -2339,6 +2342,7 @@ class Launcher(ctk.CTk):
         """Close the window while launch watchers finish tracking game time."""
         self.closing = True
         self.stop_chat_browser()
+        self.chat_game_file.unlink(missing_ok=True)
         if self.window_motion_after_id is not None:
             try:
                 self.after_cancel(self.window_motion_after_id)
@@ -2374,9 +2378,24 @@ class Launcher(ctk.CTk):
         except tk.TclError:
             pass
 
-    def mark_instance_running(self, ident, started):
+    def write_chat_game_processes(self):
+        """Share only Minecraft process IDs with the Windows chat helper."""
+        if os.name != "nt":
+            return
+        self.chat_game_file.parent.mkdir(parents=True, exist_ok=True)
+        temporary = self.chat_game_file.with_name(f".{self.chat_game_file.name}.{os.getpid()}.tmp")
+        temporary.write_text(
+            "".join(f"{pid}\n" for pid in self.overlay_game_pids.values()), encoding="ascii"
+        )
+        os.replace(temporary, self.chat_game_file)
+
+    def mark_instance_running(self, ident, started, pid=None):
         self.launching_instances.discard(ident)
         self.running_instances[ident] = started
+        if os.name == "nt" and pid is not None:
+            self.overlay_game_pids[ident] = pid
+            self.write_chat_game_processes()
+            self.ensure_chat_browser()
         self.refresh_instances()
         if not self.store.data["settings"].get("keep_launcher_open", True):
             self.iconify()
@@ -2408,6 +2427,8 @@ class Launcher(ctk.CTk):
 
     def finish_instance_session(self, ident, elapsed, exit_code=0, crash_report=None):
         self.running_instances.pop(ident, None)
+        if self.overlay_game_pids.pop(ident, None) is not None:
+            self.write_chat_game_processes()
         self.launching_instances.discard(ident)
         self.refresh_instances()
         if not self.store.data["settings"].get("keep_launcher_open", True):
@@ -3046,6 +3067,8 @@ class Launcher(ctk.CTk):
             str(self.chat_unread_file),
             "--visible-file",
             str(self.chat_visible_file),
+            "--game-process-file",
+            str(getattr(self, "chat_game_file", profile_directory / chat_browser.GAME_PROCESS_FILE_NAME)),
         ]
         if getattr(sys, "frozen", False):
             return [sys.executable, *arguments]
@@ -5994,7 +6017,7 @@ class Launcher(ctk.CTk):
                 process = minecraft_backend.launch(self.store.instances / ident, launch_account)
                 self.post_ui(
                     lambda: (
-                        self.mark_instance_running(ident, started),
+                        self.mark_instance_running(ident, started, process.pid),
                         self.status.set("Minecraft launched with " + account["name"]),
                     )
                 )
