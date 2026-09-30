@@ -23,6 +23,8 @@ CHAT_ORIGIN = "https://irc.breakblocks.com"
 PROFILE_DIRECTORY_NAME = "web-chat-profile"
 UNREAD_FILE_NAME = "unread-notifications.count"
 VISIBLE_FILE_NAME = ".chat-visible"
+OVERLAY_VISIBLE_FILE_NAME = ".overlay-visible"
+GAME_PROCESS_FILE_NAME = ".active-game-pids.txt"
 
 
 def notification_logo_path() -> pathlib.Path | None:
@@ -122,9 +124,13 @@ def write_unread_count(path: pathlib.Path, count: int) -> int:
     return value
 
 
-def record_chat_notification(unread_file: pathlib.Path, visible_file: pathlib.Path) -> int:
+def record_chat_notification(
+    unread_file: pathlib.Path,
+    visible_file: pathlib.Path,
+    overlay_visible_file: pathlib.Path | None = None,
+) -> int:
     """Increment unread chat while the launcher's Chat page is not visible."""
-    if visible_file.is_file():
+    if visible_file.is_file() or (overlay_visible_file is not None and overlay_visible_file.is_file()):
         return read_unread_count(unread_file)
     return write_unread_count(unread_file, read_unread_count(unread_file) + 1)
 
@@ -379,6 +385,7 @@ def run_browser(
     shutdown_file: pathlib.Path,
     unread_file: pathlib.Path,
     visible_file: pathlib.Path,
+    game_process_file: pathlib.Path | None = None,
 ) -> int:
     if sys.platform.startswith("linux"):
         # Tk runs through X11/XWayland.  Matching that backend permits the Qt
@@ -403,6 +410,8 @@ def run_browser(
     )
 
     profile_directory = prepare_profile_directory(profile_directory)
+    game_process_file = game_process_file or profile_directory / GAME_PROCESS_FILE_NAME
+    overlay_visible_file = profile_directory / OVERLAY_VISIBLE_FILE_NAME
     application = QApplication.instance() or QApplication(sys.argv[:1])
     configure_application_lifecycle(application)
     application.setApplicationName("BreakBlocks Chat")
@@ -526,7 +535,7 @@ def run_browser(
     notification_popup = ChatNotificationPopup()
 
     def present_notification(notification) -> None:
-        record_chat_notification(unread_file, visible_file)
+        record_chat_notification(unread_file, visible_file, overlay_visible_file)
         notification_popup.present(notification)
 
     profile.setNotificationPresenter(present_notification)
@@ -541,6 +550,14 @@ def run_browser(
 
     host = NativeHost(parent_handle, int(view.winId()), qt_view=view)
     host.attach()
+    overlay = None
+    if os.name == "nt":
+        from windows_chat_overlay import WindowsChatOverlay
+
+        overlay = WindowsChatOverlay(
+            application, host, parent_handle, game_process_file, overlay_visible_file,
+            lambda: write_unread_count(unread_file, 0),
+        )
     log_browser_message(
         f"attached child window {int(view.winId())} to launcher host {parent_handle}"
     )
@@ -553,6 +570,8 @@ def run_browser(
         if shutdown_file.is_file():
             log_browser_message("received launcher shutdown request")
             timer.stop()
+            if overlay is not None:
+                overlay.shutdown()
             view.close()
             application.quit()
             return
@@ -570,6 +589,8 @@ def run_browser(
     view.load(QUrl(CHAT_URL))
     log_browser_message(f"loading {CHAT_URL}")
     return_code = application.exec()
+    if overlay is not None:
+        overlay.shutdown()
     log_browser_message(f"event loop stopped with exit code {return_code}")
     return return_code
 
@@ -582,6 +603,7 @@ def main(arguments: list[str] | None = None) -> int:
     parser.add_argument("--shutdown-file", required=True, type=pathlib.Path)
     parser.add_argument("--unread-file", required=True, type=pathlib.Path)
     parser.add_argument("--visible-file", required=True, type=pathlib.Path)
+    parser.add_argument("--game-process-file", type=pathlib.Path)
     options = parser.parse_args(arguments)
     try:
         return run_browser(
@@ -590,6 +612,7 @@ def main(arguments: list[str] | None = None) -> int:
             options.shutdown_file,
             options.unread_file,
             options.visible_file,
+            options.game_process_file,
         )
     except Exception:
         log_browser_message("could not start or remain attached")
