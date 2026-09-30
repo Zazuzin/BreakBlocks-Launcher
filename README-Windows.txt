@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.13 Alpha - Windows x64 test build
+BreakBlocks Launcher 0.9.14 Alpha - Windows x64 overlay test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -12,8 +12,19 @@ Install
 Python and the GUI runtime are included. Java is selected or downloaded
 separately for each Minecraft version when required.
 
-Highlights in 0.9.13
--------------------
+Windows overlay test in 0.9.14
+------------------------------
+- Launch Minecraft from BreakBlocks, then press Ctrl+Shift+F9 while its window
+  is active to bring the signed-in web chat over the game. Reply in the same
+  browser session. Press Esc or Ctrl+Shift+F9 to return to Minecraft.
+- The overlay follows Minecraft sessions launched by this copy of BreakBlocks.
+  It is designed for windowed or borderless Minecraft; exclusive fullscreen
+  can prevent desktop windows appearing over the game.
+- This is a Windows test build. The overlay has not yet been verified on a
+  physical Windows game session.
+
+Earlier improvements
+--------------------
 - Sharpened text, icons, borders, and rounded corners on Windows displays that
   use scaling by enabling native per-monitor DPI rendering before startup.
 - Updated chat notifications with the BBC chicken logo, a cleaner title, a
@@ -60,7 +71,7 @@ can still take time to build for a new certificate.
 
 Automatic updates
 -----------------
-Update checks activate after 0.9.13 is published as a GitHub Release with
+Update checks activate after a matching version is published as a GitHub Release with
 breakblocks-update.json and the matching Windows package. The launcher verifies
 the size and SHA-256 checksum before replacing the installation and restarting.
 
