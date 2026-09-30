@@ -83,6 +83,25 @@ def test_unread_messages_count_when_game_has_focus_even_if_chat_tab_is_selected(
         ) == 1
 
 
+def test_web_page_goes_into_background_when_chat_tab_or_launcher_loses_focus():
+    with tempfile.TemporaryDirectory() as temporary:
+        marker = Path(temporary) / chat_browser.VISIBLE_FILE_NAME
+        foreground = [456]
+        roots = {123: 100, 456: 100, 789: 789}
+        windows = SimpleNamespace(
+            GetForegroundWindow=lambda: foreground[0],
+            GetAncestor=lambda handle, _mode: roots[handle],
+        )
+        marker.write_text("visible\n", encoding="ascii")
+        assert chat_browser.chat_content_is_visible(marker, 123, False, windows)
+        marker.unlink()  # Launcher tab is selected, but the browser stays connected.
+        assert not chat_browser.chat_content_is_visible(marker, 123, False, windows)
+        marker.write_text("visible\n", encoding="ascii")
+        foreground[0] = 789  # Minecraft is in front of the launcher.
+        assert not chat_browser.chat_content_is_visible(marker, 123, False, windows)
+        assert chat_browser.chat_content_is_visible(marker, 123, True, windows)
+
+
 def test_browser_process_does_not_quit_when_reparented_into_tk():
     application = SimpleNamespace()
     application.setQuitOnLastWindowClosed = lambda value: setattr(
