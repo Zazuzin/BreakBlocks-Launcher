@@ -146,6 +146,13 @@ def chat_page_is_visible(
     return visible_file.is_file() and launcher_has_foreground(launcher_handle, user32)
 
 
+def chat_content_is_visible(
+    visible_file: pathlib.Path, launcher_handle: int, overlay_open: bool, user32=None,
+) -> bool:
+    """Whether the web page is actually on screen, including the game overlay."""
+    return overlay_open or chat_page_is_visible(visible_file, launcher_handle, user32)
+
+
 def record_chat_notification(
     unread_file: pathlib.Path,
     visible_file: pathlib.Path,
@@ -628,9 +635,10 @@ def run_browser(
 
     timer = QTimer(view)
     unavailable_checks = 0
+    reported_visibility = None
 
     def keep_in_host() -> None:
-        nonlocal unavailable_checks
+        nonlocal unavailable_checks, reported_visibility
         if shutdown_file.is_file():
             log_browser_message("received launcher shutdown request")
             timer.stop()
@@ -647,9 +655,25 @@ def run_browser(
                 application.quit()
             return
         unavailable_checks = 0
+        # SetParent moves the native WebEngine HWND between Tk and the overlay,
+        # but Qt cannot see Tk's grid_remove() or Minecraft taking focus. Tell
+        # the website when its chat really becomes a background page. This
+        # keeps its own background-message notifications working while the
+        # live IRC connection and login session remain open.
+        content_visible = chat_content_is_visible(
+            visible_file, parent_handle, overlay is not None and overlay.visible
+        )
+        if content_visible != reported_visibility or page.isVisible() != content_visible:
+            page.setVisible(content_visible)
+            if content_visible != reported_visibility:
+                log_browser_message(
+                    f"chat page {'visible' if content_visible else 'background'}"
+                )
+                reported_visibility = content_visible
 
     timer.timeout.connect(keep_in_host)
     timer.start(150)
+    keep_in_host()
     view.load(QUrl(CHAT_URL))
     log_browser_message(f"loading {CHAT_URL}")
     return_code = application.exec()
