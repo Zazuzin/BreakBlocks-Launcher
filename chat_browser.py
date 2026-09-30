@@ -128,9 +128,13 @@ def record_chat_notification(
     unread_file: pathlib.Path,
     visible_file: pathlib.Path,
     overlay_visible_file: pathlib.Path | None = None,
+    *,
+    overlay_visible: bool | None = None,
 ) -> int:
-    """Increment unread chat while the launcher's Chat page is not visible."""
-    if visible_file.is_file() or (overlay_visible_file is not None and overlay_visible_file.is_file()):
+    """Increment unread chat unless the launcher page or overlay is visible."""
+    if overlay_visible is None:
+        overlay_visible = overlay_visible_file is not None and overlay_visible_file.is_file()
+    if visible_file.is_file() or overlay_visible:
         return read_unread_count(unread_file)
     return write_unread_count(unread_file, read_unread_count(unread_file) + 1)
 
@@ -142,6 +146,7 @@ class NativeHost:
         self.parent_handle = parent_handle
         self.child_handle = child_handle
         self.qt_view = qt_view
+        self._windows_resize_state = None
         self._display = None
         self._x11 = None
 
@@ -246,6 +251,7 @@ class NativeHost:
         )
 
         self.child_handle = child_handle
+        self._windows_resize_state = None
         return True
 
     def _resize_windows(self) -> bool:
@@ -295,7 +301,13 @@ class NativeHost:
             return True
         width = max(1, rectangle.right - rectangle.left)
         height = max(1, rectangle.bottom - rectangle.top)
-        return bool(user32.MoveWindow(child_handle, 0, 0, width, height, True))
+        state = (self.parent_handle, child_handle, width, height)
+        if state == self._windows_resize_state:
+            return True
+        moved = bool(user32.MoveWindow(child_handle, 0, 0, width, height, True))
+        if moved:
+            self._windows_resize_state = state
+        return moved
 
     def _attach_x11(self) -> None:
         self._x11 = ctypes.cdll.LoadLibrary("libX11.so.6")
@@ -412,6 +424,9 @@ def run_browser(
     profile_directory = prepare_profile_directory(profile_directory)
     game_process_file = game_process_file or profile_directory / GAME_PROCESS_FILE_NAME
     overlay_visible_file = profile_directory / OVERLAY_VISIBLE_FILE_NAME
+    # This file is only a hint for other processes; a prior crashed helper may
+    # have left it behind. The live Qt overlay state controls unread messages.
+    overlay_visible_file.unlink(missing_ok=True)
     application = QApplication.instance() or QApplication(sys.argv[:1])
     configure_application_lifecycle(application)
     application.setApplicationName("BreakBlocks Chat")
@@ -533,9 +548,18 @@ def run_browser(
                 self.close_notification()
 
     notification_popup = ChatNotificationPopup()
+    overlay = None
 
     def present_notification(notification) -> None:
-        record_chat_notification(unread_file, visible_file, overlay_visible_file)
+        overlay_open = overlay is not None and overlay.visible
+        count = record_chat_notification(
+            unread_file, visible_file, overlay_visible_file,
+            overlay_visible=overlay_open,
+        )
+        log_browser_message(
+            f"notification received; unread={count}; overlay_open={overlay_open}; "
+            f"launcher_chat_visible={visible_file.is_file()}"
+        )
         notification_popup.present(notification)
 
     profile.setNotificationPresenter(present_notification)
@@ -550,7 +574,6 @@ def run_browser(
 
     host = NativeHost(parent_handle, int(view.winId()), qt_view=view)
     host.attach()
-    overlay = None
     if os.name == "nt":
         from windows_chat_overlay import WindowsChatOverlay
 
