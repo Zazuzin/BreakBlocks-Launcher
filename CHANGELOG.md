@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.14 Alpha (Windows overlay test)
+
+- Added a launcher-managed hotkey overlay for Minecraft sessions started on Windows.
+  Ctrl+Shift+F9 moves the existing signed-in BreakBlocks chat over a windowed
+  or borderless game, and Esc returns focus to Minecraft.
+- The chat page and overlay use the same browser view and website session.
+  Opening the overlay also clears the unread badge.
+- Linux packages stay on the existing build while this Windows behavior is tested.
+
 ## 0.9.13 Alpha
 
 - Sharpened Windows text, rounded corners, and icons on scaled displays by
