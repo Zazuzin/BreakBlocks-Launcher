@@ -60,6 +60,29 @@ def test_stale_overlay_marker_does_not_suppress_new_messages():
         ) == 1
 
 
+def test_unread_messages_count_when_game_has_focus_even_if_chat_tab_is_selected():
+    with tempfile.TemporaryDirectory() as temporary:
+        root = Path(temporary)
+        unread = root / chat_browser.UNREAD_FILE_NAME
+        chat_marker = root / chat_browser.VISIBLE_FILE_NAME
+        chat_marker.write_text("visible\n", encoding="ascii")
+        foreground = [456]
+        roots = {123: 100, 456: 100, 789: 789}
+        windows = SimpleNamespace(
+            GetForegroundWindow=lambda: foreground[0],
+            GetAncestor=lambda handle, _mode: roots[handle],
+        )
+        assert chat_browser.chat_page_is_visible(chat_marker, 123, windows)
+        assert chat_browser.record_chat_notification(
+            unread, chat_marker, chat_visible=True
+        ) == 0
+        foreground[0] = 789  # Minecraft is in front of the launcher.
+        assert not chat_browser.chat_page_is_visible(chat_marker, 123, windows)
+        assert chat_browser.record_chat_notification(
+            unread, chat_marker, chat_visible=False
+        ) == 1
+
+
 def test_browser_process_does_not_quit_when_reparented_into_tk():
     application = SimpleNamespace()
     application.setQuitOnLastWindowClosed = lambda value: setattr(
