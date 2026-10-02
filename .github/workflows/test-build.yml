@@ -11,6 +11,7 @@ on:
       - "build/0.9.17-windows-overlay-redraw"
       - "build/0.9.18-windows-chat-notifications"
       - "build/0.9.19-windows-chat-visibility"
+      - "build/0.9.20-platform-parity"
 
 permissions:
   contents: read
@@ -59,13 +60,13 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: BreakBlocks-Launcher-0.9.19-Windows-test
+          name: BreakBlocks-Launcher-0.9.20-Windows-test
           path: dist/BreakBlocks-Launcher/
           if-no-files-found: error
           retention-days: 14
 
   linux:
-    if: github.ref_name == 'build/0.9.13-ui-polish'
+    if: github.ref_name == 'build/0.9.13-ui-polish' || github.ref_name == 'build/0.9.20-platform-parity'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -76,7 +77,7 @@ jobs:
       - name: Install Tk and build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes python3-tk
+          sudo apt-get install --yes python3-tk xvfb xauth
           python -m pip install -r requirements-dev.txt
       - name: Read version
         run: echo "VERSION=$(python -c 'from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)')" >> "$GITHUB_ENV"
@@ -86,11 +87,13 @@ jobs:
           python -m ruff check --fix *.py tests tools
           export PYTHONPATH="$PWD"
           for test_file in tests/test_*.py; do python "$test_file"; done
+          xvfb-run -a python tests/test_x11_chat_focus.py
       - name: Build Linux test packages
         run: |
           python tools/collect_dependency_licenses.py --output third-party-licenses
           python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
           cp README.txt "dist/BreakBlocks Launcher/README.txt"
+          cp README-SteamDeck.txt "dist/BreakBlocks Launcher/README-SteamDeck.txt"
           cp LICENSE PRIVACY.md TERMS.md THIRD-PARTY-NOTICES.md "dist/BreakBlocks Launcher/"
           cp -R fonts "dist/BreakBlocks Launcher/fonts"
           cp -R third-party-licenses "dist/BreakBlocks Launcher/third-party-licenses"
@@ -103,7 +106,7 @@ jobs:
           dpkg-deb --contents "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" > /dev/null
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-test-packages
+          name: BreakBlocks-Launcher-0.9.20-Linux-test
           path: |
             BreakBlocks-Launcher-*-Ubuntu-amd64.deb
             BreakBlocks-Launcher-*-SteamDeck-x86_64.tar.gz

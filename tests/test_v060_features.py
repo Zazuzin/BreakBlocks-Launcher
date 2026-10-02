@@ -15,7 +15,7 @@ import zazu_launcher
 
 def test_block_icon_catalogue():
     assert zazu_launcher.APP_NAME == "BreakBlocks Launcher"
-    assert zazu_launcher.APP_VERSION == "0.9.13 Alpha"
+    assert zazu_launcher.APP_VERSION == "0.9.20 Alpha"
     assert len(zazu_launcher.BLOCK_ICONS) == 25
     assert len(zazu_launcher.BLOCK_ICON_KEYS) == 25
     asset_root = Path(zazu_launcher.__file__).resolve().parent / "assets" / "instance_icons"

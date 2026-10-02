@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.20 Alpha (Windows and Linux test)
+
+- Brought the shared chat notification and visibility fixes to Ubuntu and the
+  portable Linux package. New messages count as unread when Minecraft has
+  focus, even if the Chat tab was selected before launching.
+- Synchronized Windows and Linux package versions and build checks. The
+  Ctrl+Shift+F9 chat overlay remains available on Windows only.
+
 ## 0.9.15 Alpha (Windows archive test)
 
 - Packaged the Windows GitHub Actions build as one archive containing the

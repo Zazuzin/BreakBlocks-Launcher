@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.13 Alpha - Linux/Steam Deck test build
+BreakBlocks Launcher 0.9.20 Alpha - Linux/Steam Deck test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -12,8 +12,10 @@ Install
 This portable package includes its Python and Tk runtime. Java is selected or
 downloaded separately for each Minecraft version when required.
 
-Highlights in 0.9.13
--------------------
+Chat and launcher features
+--------------------------
+- The chat page reports when it is in the background so website notifications
+  and the unread number work after switching tabs or focusing Minecraft.
 - Updated chat notifications with the BBC chicken logo, a cleaner title, a
   wider layout, and an eight-second display time.
 - Matched the unread-number background to the Chat button while idle, hovered,
@@ -24,10 +26,6 @@ Highlights in 0.9.13
   with the permission retained in the chat profile.
 - Added a desktop notification popup and restored the unread number beside Chat
   while another launcher page is open. Opening Chat clears the number.
-- Restored the Windows BreakBlocks website inside the launcher's Chat panel
-  while retaining the browser lifecycle fixes from the previous test build.
-- Added native-window reattachment when Qt recreates the Chromium handle;
-  Linux and Steam Deck keep their existing embedded-chat implementation.
 - Replaced the native IRC client with the authenticated BreakBlocks web chat.
 - Embedded the website directly in the Chat page and retained its login cookie
   and site preferences in a dedicated local browser profile.
@@ -50,7 +48,7 @@ Highlights in 0.9.13
 
 Important release note
 ----------------------
-Update checks activate after 0.9.13 is published as a GitHub Release with
+Update checks activate after 0.9.20 is published as a GitHub Release with
 breakblocks-update.json and the matching platform packages. The launcher
 verifies the package before installation. Ubuntu asks for the normal
 administrator approval; portable Steam Deck builds replace themselves and
@@ -79,6 +77,7 @@ in the local web-chat-profile directory so you normally remain signed in. Use
 the website's Log out control to end the session. BreakBlocks chat notifications
 are allowed only for that secure address. New notifications received while Chat
 is not open add to the number beside Chat; opening Chat clears it.
+The Ctrl+Shift+F9 in-game overlay is currently available in the Windows build.
 
 Legal
 -----

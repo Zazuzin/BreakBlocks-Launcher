@@ -1,7 +1,6 @@
-BreakBlocks Launcher 0.9.13 Alpha
-Windows complete source review copy
+BreakBlocks Launcher 0.9.20 Alpha
+Windows and Linux complete source review copy
 
-Start with BUILD-WINDOWS.md. This archive contains the full shared source,
-Windows packaging files, tests, artwork, policies, and licence material. The
-Linux files are retained because the project shares one codebase and reviewers
-may need to verify the platform guards.
+Start with BUILD-WINDOWS.md or BUILD-LINUX.md. This archive contains the full
+shared source, both packaging configurations, tests, artwork, policies, and
+licence material. Reviewers can verify the platform guards in one codebase.

@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.13 Alpha - Steam Deck x86_64
+BreakBlocks Launcher 0.9.20 Alpha - Steam Deck x86_64
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -6,25 +6,18 @@ MOJANG OR MICROSOFT.
 This portable package is for a Steam Deck running the standard SteamOS desktop.
 It does not require pacman, apt, sudo, or disabling the read-only system partition.
 
-INSTALL
--------
+RUN IN DESKTOP MODE
+-------------------
 1. Switch the Steam Deck to Desktop Mode.
 2. Extract the complete .tar.gz archive.
-3. Open Konsole in the extracted BreakBlocks-Launcher folder.
-4. Run:
-
-     chmod +x "Install on Steam Deck.sh"
-     ./"Install on Steam Deck.sh"
-
-5. Open BreakBlocks Launcher from the application menu under Games.
+3. Open the extracted BreakBlocks-Launcher folder and run "BreakBlocks Launcher".
+   Choose Execute if the file manager asks. Keep the entire folder together.
 
 ADD TO GAMING MODE
 ------------------
 1. Open Steam in Desktop Mode.
 2. Select Games, then Add a Non-Steam Game to My Library.
-3. Browse to:
-
-     /home/deck/.local/opt/breakblocks-launcher/BreakBlocks Launcher
+3. Browse to "BreakBlocks Launcher" in the extracted folder.
 
 4. Add it, then return to Gaming Mode.
 
@@ -35,12 +28,15 @@ Keep the entire folder together; do not move only the launcher script.
 
 FEATURES
 --------
-The launcher has the same feature set as the Windows and Ubuntu 0.9.13 builds.
+The chat and launcher features match the Ubuntu 0.9.20 build. The Windows
+Ctrl+Shift+F9 overlay is currently Windows only.
 Its Chat page embeds the authenticated BreakBlocks website and keeps the site
 cookie in a dedicated local profile so users normally remain signed in. Chat
 fills the complete area beside the sidebar, where right-clicking Chat provides
 an Open in browser option. Secure website notifications add to the unread
 number beside Chat while another launcher page is open; opening Chat clears it.
+Chat also enters the background when Minecraft has focus, so incoming messages
+can produce notifications while playing.
 Notifications use the BBC chicken logo and a wider eight-second popup. The
 unread number blends with the Chat button in its normal and highlighted states.
 

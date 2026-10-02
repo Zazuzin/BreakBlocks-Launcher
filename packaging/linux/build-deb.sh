@@ -68,6 +68,7 @@ find "$package_root" -type f -exec chmod 0644 {} +
 chmod 0755 "$package_root/usr/bin/breakblocks-launcher" "$debian_root/postinst" "$debian_root/postrm"
 
 mkdir -p "$output_dir"
-package="$output_dir/BreakBlocks-Launcher-0.9.13-Ubuntu-amd64.deb"
+version="$("$build_python" -c 'from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)')"
+package="$output_dir/BreakBlocks-Launcher-${version}-Ubuntu-amd64.deb"
 dpkg-deb --build --root-owner-group "$package_root" "$package"
 echo "Created $package"

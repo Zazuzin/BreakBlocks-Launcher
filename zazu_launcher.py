@@ -3160,8 +3160,8 @@ class Launcher(ctk.CTk):
 
     def refresh_chat_unread_badge(self):
         count = chat_browser.read_unread_count(self.chat_unread_file)
-        chat_is_foreground = self.current_page == "Chat" and (
-            os.name != "nt" or chat_browser.launcher_has_foreground(self.winfo_id())
+        chat_is_foreground = self.current_page == "Chat" and chat_browser.launcher_has_foreground(
+            self.winfo_id()
         )
         if chat_is_foreground:
             if count:
@@ -3174,7 +3174,7 @@ class Launcher(ctk.CTk):
             if visible:
                 self.chat_visible_file.parent.mkdir(parents=True, exist_ok=True)
                 self.chat_visible_file.write_text("visible\n", encoding="utf-8")
-                if os.name != "nt" or chat_browser.launcher_has_foreground(self.winfo_id()):
+                if chat_browser.launcher_has_foreground(self.winfo_id()):
                     chat_browser.write_unread_count(self.chat_unread_file, 0)
                     self.set_chat_unread_badge(0)
                 return

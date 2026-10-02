@@ -127,6 +127,8 @@ def write_unread_count(path: pathlib.Path, count: int) -> int:
 def launcher_has_foreground(launcher_handle: int, user32=None) -> bool:
     """Check the launcher window itself, not whether its Chat tab is selected."""
     if user32 is None:
+        if sys.platform.startswith("linux"):
+            return x11_launcher_has_foreground(launcher_handle)
         if os.name != "nt":
             return True
         user32 = ctypes.WinDLL("user32", use_last_error=True)
@@ -138,6 +140,63 @@ def launcher_has_foreground(launcher_handle: int, user32=None) -> bool:
         return False
     launcher_root = user32.GetAncestor(launcher_handle, 2)  # GA_ROOT
     return bool(launcher_root) and launcher_root == user32.GetAncestor(foreground, 2)
+
+
+def x11_launcher_has_foreground(launcher_handle: int) -> bool:
+    """Compare the focused X11 window with the launcher's top-level window."""
+    if not os.environ.get("DISPLAY"):
+        return False
+    try:
+        x11 = ctypes.cdll.LoadLibrary("libX11.so.6")
+    except OSError:
+        return False
+    x11.XOpenDisplay.argtypes = (ctypes.c_char_p,)
+    x11.XOpenDisplay.restype = ctypes.c_void_p
+    x11.XCloseDisplay.argtypes = (ctypes.c_void_p,)
+    x11.XGetInputFocus.argtypes = (
+        ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_int)
+    )
+    x11.XQueryTree.argtypes = (
+        ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong),
+        ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.POINTER(ctypes.c_ulong)),
+        ctypes.POINTER(ctypes.c_uint),
+    )
+    x11.XQueryTree.restype = ctypes.c_int
+    x11.XFree.argtypes = (ctypes.c_void_p,)
+    display = x11.XOpenDisplay(None)
+    if not display:
+        return False
+
+    def top_level(window: int) -> int:
+        for _ in range(64):
+            if window <= 1:  # None or PointerRoot is not an application window.
+                return 0
+            root = ctypes.c_ulong()
+            parent = ctypes.c_ulong()
+            children = ctypes.POINTER(ctypes.c_ulong)()
+            count = ctypes.c_uint()
+            if not x11.XQueryTree(
+                display, window, ctypes.byref(root), ctypes.byref(parent),
+                ctypes.byref(children), ctypes.byref(count),
+            ):
+                return 0
+            if children:
+                x11.XFree(children)
+            if parent.value == root.value:
+                return window
+            if parent.value == window:
+                return 0
+            window = parent.value
+        return 0
+
+    try:
+        focused = ctypes.c_ulong()
+        revert_to = ctypes.c_int()
+        x11.XGetInputFocus(display, ctypes.byref(focused), ctypes.byref(revert_to))
+        launcher_root = top_level(launcher_handle)
+        return bool(launcher_root) and launcher_root == top_level(focused.value)
+    finally:
+        x11.XCloseDisplay(display)
 
 
 def chat_page_is_visible(
