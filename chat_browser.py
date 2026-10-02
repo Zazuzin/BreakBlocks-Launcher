@@ -154,11 +154,16 @@ def x11_launcher_has_foreground(launcher_handle: int) -> bool:
     x11.XOpenDisplay.restype = ctypes.c_void_p
     x11.XCloseDisplay.argtypes = (ctypes.c_void_p,)
     x11.XGetInputFocus.argtypes = (
-        ctypes.c_void_p, ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.c_int)
+        ctypes.c_void_p,
+        ctypes.POINTER(ctypes.c_ulong),
+        ctypes.POINTER(ctypes.c_int),
     )
     x11.XQueryTree.argtypes = (
-        ctypes.c_void_p, ctypes.c_ulong, ctypes.POINTER(ctypes.c_ulong),
-        ctypes.POINTER(ctypes.c_ulong), ctypes.POINTER(ctypes.POINTER(ctypes.c_ulong)),
+        ctypes.c_void_p,
+        ctypes.c_ulong,
+        ctypes.POINTER(ctypes.c_ulong),
+        ctypes.POINTER(ctypes.c_ulong),
+        ctypes.POINTER(ctypes.POINTER(ctypes.c_ulong)),
         ctypes.POINTER(ctypes.c_uint),
     )
     x11.XQueryTree.restype = ctypes.c_int
@@ -176,8 +181,12 @@ def x11_launcher_has_foreground(launcher_handle: int) -> bool:
             children = ctypes.POINTER(ctypes.c_ulong)()
             count = ctypes.c_uint()
             if not x11.XQueryTree(
-                display, window, ctypes.byref(root), ctypes.byref(parent),
-                ctypes.byref(children), ctypes.byref(count),
+                display,
+                window,
+                ctypes.byref(root),
+                ctypes.byref(parent),
+                ctypes.byref(children),
+                ctypes.byref(count),
             ):
                 return 0
             if children:
@@ -200,13 +209,18 @@ def x11_launcher_has_foreground(launcher_handle: int) -> bool:
 
 
 def chat_page_is_visible(
-    visible_file: pathlib.Path, launcher_handle: int, user32=None,
+    visible_file: pathlib.Path,
+    launcher_handle: int,
+    user32=None,
 ) -> bool:
     return visible_file.is_file() and launcher_has_foreground(launcher_handle, user32)
 
 
 def chat_content_is_visible(
-    visible_file: pathlib.Path, launcher_handle: int, overlay_open: bool, user32=None,
+    visible_file: pathlib.Path,
+    launcher_handle: int,
+    overlay_open: bool,
+    user32=None,
 ) -> bool:
     """Whether the web page is actually on screen, including the game overlay."""
     return overlay_open or chat_page_is_visible(visible_file, launcher_handle, user32)
@@ -618,12 +632,22 @@ def run_browser(
             if os.name == "nt":
                 user32 = ctypes.WinDLL("user32", use_last_error=True)
                 user32.SetWindowPos.argtypes = (
-                    ctypes.c_void_p, ctypes.c_void_p,
-                    ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_uint,
+                    ctypes.c_void_p,
+                    ctypes.c_void_p,
+                    ctypes.c_int,
+                    ctypes.c_int,
+                    ctypes.c_int,
+                    ctypes.c_int,
+                    ctypes.c_uint,
                 )
                 user32.SetWindowPos.restype = ctypes.c_int
                 if not user32.SetWindowPos(
-                    int(self.winId()), -1, 0, 0, 0, 0,
+                    int(self.winId()),
+                    -1,
+                    0,
+                    0,
+                    0,
+                    0,
                     0x0001 | 0x0002 | 0x0010 | 0x0040,
                 ):
                     log_browser_message(
@@ -660,8 +684,11 @@ def run_browser(
         overlay_open = overlay is not None and overlay.visible
         chat_visible = chat_page_is_visible(visible_file, parent_handle)
         count = record_chat_notification(
-            unread_file, visible_file, overlay_visible_file,
-            overlay_visible=overlay_open, chat_visible=chat_visible,
+            unread_file,
+            visible_file,
+            overlay_visible_file,
+            overlay_visible=overlay_open,
+            chat_visible=chat_visible,
         )
         log_browser_message(
             f"notification received; unread={count}; overlay_open={overlay_open}; "
@@ -685,7 +712,11 @@ def run_browser(
         from windows_chat_overlay import WindowsChatOverlay
 
         overlay = WindowsChatOverlay(
-            application, host, parent_handle, game_process_file, overlay_visible_file,
+            application,
+            host,
+            parent_handle,
+            game_process_file,
+            overlay_visible_file,
             lambda: write_unread_count(unread_file, 0),
         )
     log_browser_message(
@@ -725,9 +756,7 @@ def run_browser(
         if content_visible != reported_visibility or page.isVisible() != content_visible:
             page.setVisible(content_visible)
             if content_visible != reported_visibility:
-                log_browser_message(
-                    f"chat page {'visible' if content_visible else 'background'}"
-                )
+                log_browser_message(f"chat page {'visible' if content_visible else 'background'}")
                 reported_visibility = content_visible
 
     timer.timeout.connect(keep_in_host)

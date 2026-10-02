@@ -3069,7 +3069,11 @@ class Launcher(ctk.CTk):
             "--visible-file",
             str(self.chat_visible_file),
             "--game-process-file",
-            str(getattr(self, "chat_game_file", profile_directory / chat_browser.GAME_PROCESS_FILE_NAME)),
+            str(
+                getattr(
+                    self, "chat_game_file", profile_directory / chat_browser.GAME_PROCESS_FILE_NAME
+                )
+            ),
         ]
         if getattr(sys, "frozen", False):
             return [sys.executable, *arguments]
@@ -6024,7 +6028,8 @@ class Launcher(ctk.CTk):
                     lambda: (
                         self.mark_instance_running(ident, started, process.pid),
                         self.status.set(
-                            "Minecraft launched with " + account["name"]
+                            "Minecraft launched with "
+                            + account["name"]
                             + " — press Ctrl+Shift+F9 in Minecraft for chat"
                         ),
                     )

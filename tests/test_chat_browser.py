@@ -52,12 +52,18 @@ def test_stale_overlay_marker_does_not_suppress_new_messages():
         launcher_visible = root / chat_browser.VISIBLE_FILE_NAME
         stale_overlay_marker = root / chat_browser.OVERLAY_VISIBLE_FILE_NAME
         stale_overlay_marker.write_text("visible\n", encoding="ascii")
-        assert chat_browser.record_chat_notification(
-            unread, launcher_visible, stale_overlay_marker, overlay_visible=False
-        ) == 1
-        assert chat_browser.record_chat_notification(
-            unread, launcher_visible, stale_overlay_marker, overlay_visible=True
-        ) == 1
+        assert (
+            chat_browser.record_chat_notification(
+                unread, launcher_visible, stale_overlay_marker, overlay_visible=False
+            )
+            == 1
+        )
+        assert (
+            chat_browser.record_chat_notification(
+                unread, launcher_visible, stale_overlay_marker, overlay_visible=True
+            )
+            == 1
+        )
 
 
 def test_unread_messages_count_when_game_has_focus_even_if_chat_tab_is_selected():
@@ -73,14 +79,10 @@ def test_unread_messages_count_when_game_has_focus_even_if_chat_tab_is_selected(
             GetAncestor=lambda handle, _mode: roots[handle],
         )
         assert chat_browser.chat_page_is_visible(chat_marker, 123, windows)
-        assert chat_browser.record_chat_notification(
-            unread, chat_marker, chat_visible=True
-        ) == 0
+        assert chat_browser.record_chat_notification(unread, chat_marker, chat_visible=True) == 0
         foreground[0] = 789  # Minecraft is in front of the launcher.
         assert not chat_browser.chat_page_is_visible(chat_marker, 123, windows)
-        assert chat_browser.record_chat_notification(
-            unread, chat_marker, chat_visible=False
-        ) == 1
+        assert chat_browser.record_chat_notification(unread, chat_marker, chat_visible=False) == 1
 
 
 def test_web_page_goes_into_background_when_chat_tab_or_launcher_loses_focus():

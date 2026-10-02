@@ -34,7 +34,11 @@ def is_overlay_hotkey(event_type, message) -> bool:
 def read_game_pids(path: pathlib.Path) -> set[int]:
     """Treat an absent or partially written game list as empty."""
     try:
-        return {int(line) for line in path.read_text(encoding="ascii").splitlines() if line.isdigit() and int(line) > 0}
+        return {
+            int(line)
+            for line in path.read_text(encoding="ascii").splitlines()
+            if line.isdigit() and int(line) > 0
+        }
     except OSError:
         return set()
 
@@ -68,16 +72,32 @@ class WindowsChatOverlay(QObject):
         self.registered = False
         self.last_registration_attempt = 0.0
         self.user32 = ctypes.WinDLL("user32", use_last_error=True)
-        self.user32.RegisterHotKey.argtypes = (wintypes.HWND, ctypes.c_int, wintypes.UINT, wintypes.UINT)
+        self.user32.RegisterHotKey.argtypes = (
+            wintypes.HWND,
+            ctypes.c_int,
+            wintypes.UINT,
+            wintypes.UINT,
+        )
         self.user32.RegisterHotKey.restype = wintypes.BOOL
         self.user32.UnregisterHotKey.argtypes = (wintypes.HWND, ctypes.c_int)
         self.user32.UnregisterHotKey.restype = wintypes.BOOL
         self.user32.GetForegroundWindow.restype = wintypes.HWND
-        self.user32.GetWindowThreadProcessId.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.DWORD))
+        self.user32.GetWindowThreadProcessId.argtypes = (
+            wintypes.HWND,
+            ctypes.POINTER(wintypes.DWORD),
+        )
         self.user32.GetWindowThreadProcessId.restype = wintypes.DWORD
         self.user32.GetWindowRect.argtypes = (wintypes.HWND, ctypes.POINTER(wintypes.RECT))
         self.user32.GetWindowRect.restype = wintypes.BOOL
-        self.user32.SetWindowPos.argtypes = (wintypes.HWND, wintypes.HWND, ctypes.c_int, ctypes.c_int, ctypes.c_int, ctypes.c_int, wintypes.UINT)
+        self.user32.SetWindowPos.argtypes = (
+            wintypes.HWND,
+            wintypes.HWND,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            ctypes.c_int,
+            wintypes.UINT,
+        )
         self.user32.SetWindowPos.restype = wintypes.BOOL
         self.user32.SetForegroundWindow.argtypes = (wintypes.HWND,)
         self.user32.SetForegroundWindow.restype = wintypes.BOOL
@@ -85,7 +105,9 @@ class WindowsChatOverlay(QObject):
         self.window = QWidget()
         self.window.setWindowTitle("BreakBlocks Chat")
         self.window.setWindowFlags(
-            Qt.WindowType.Tool | Qt.WindowType.FramelessWindowHint | Qt.WindowType.WindowStaysOnTopHint
+            Qt.WindowType.Tool
+            | Qt.WindowType.FramelessWindowHint
+            | Qt.WindowType.WindowStaysOnTopHint
         )
         self.window.setStyleSheet("background: #202020; color: #f5f5f5;")
         layout = QVBoxLayout(self.window)
@@ -135,10 +157,14 @@ class WindowsChatOverlay(QObject):
             if now - self.last_registration_attempt >= 5:
                 self.last_registration_attempt = now
                 ctypes.set_last_error(0)
-                self.registered = bool(self.user32.RegisterHotKey(
-                    int(self.window.winId()), HOTKEY_ID,
-                    MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT, VK_F9,
-                ))
+                self.registered = bool(
+                    self.user32.RegisterHotKey(
+                        int(self.window.winId()),
+                        HOTKEY_ID,
+                        MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT,
+                        VK_F9,
+                    )
+                )
                 if self.registered:
                     print("Chat overlay: Ctrl+Shift+F9 registered", flush=True)
                 else:
@@ -194,9 +220,13 @@ class WindowsChatOverlay(QObject):
         self.window.show()
         # Use native window coordinates so mixed-DPI monitors position correctly.
         positioned = self.user32.SetWindowPos(
-            int(self.window.winId()), -1,
-            bounds.left + round(width * 0.1), bounds.top + round(height * 0.08),
-            round(width * 0.8), round(height * 0.84), 0x0040,
+            int(self.window.winId()),
+            -1,
+            bounds.left + round(width * 0.1),
+            bounds.top + round(height * 0.08),
+            round(width * 0.8),
+            round(height * 0.84),
+            0x0040,
         )
         if not positioned or not self.host.resize():
             print(
@@ -246,7 +276,11 @@ class WindowsChatOverlay(QObject):
                 return True
             if event.type() == QEvent.Type.Hide:
                 self.hide()
-        if self.visible and event.type() == QEvent.Type.KeyPress and event.key() == Qt.Key.Key_Escape:
+        if (
+            self.visible
+            and event.type() == QEvent.Type.KeyPress
+            and event.key() == Qt.Key.Key_Escape
+        ):
             self.hide()
             return True
         return False

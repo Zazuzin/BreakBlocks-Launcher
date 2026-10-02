@@ -11,6 +11,7 @@ from unittest import mock
 import chat_browser
 import launcher_update
 import zazu_launcher
+from app_config import APP_VERSION_NUMBER
 from tools import collect_dependency_licenses, generate_update_manifest
 
 
@@ -510,7 +511,7 @@ def test_linux_package_records_the_permission_and_runtime_fixes():
     control = (root / "control").read_text(encoding="utf-8")
     wrapper = (root / "breakblocks-launcher").read_text(encoding="utf-8")
     postinst = (root / "postinst").read_text(encoding="utf-8")
-    assert f"Version: {zazu_launcher.APP_VERSION_NUMBER}" in control
+    assert f"Version: {APP_VERSION_NUMBER}" in control
     assert "python3-tk" in control
     assert '/usr/bin/python3 "$app_dir/app/zazu_launcher.py"' in wrapper
     assert "chmod -R a+rX /usr/lib/breakblocks-launcher" in postinst
