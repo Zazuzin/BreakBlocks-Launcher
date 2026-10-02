@@ -2428,7 +2428,7 @@ class Launcher(ctk.CTk):
 
     def finish_instance_session(self, ident, elapsed, exit_code=0, crash_report=None):
         self.running_instances.pop(ident, None)
-        if self.overlay_game_pids.pop(ident, None) is not None:
+        if os.name == "nt" and self.overlay_game_pids.pop(ident, None) is not None:
             self.write_chat_game_processes()
         self.launching_instances.discard(ident)
         self.refresh_instances()
