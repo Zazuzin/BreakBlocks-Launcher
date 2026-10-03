@@ -541,11 +541,11 @@ def test_manual_test_workflow_builds_but_does_not_publish_packages():
     root = Path(zazu_launcher.__file__).resolve().parent
     workflow = (root / ".github" / "workflows" / "test-build.yml").read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
-    assert '"build/0.9.20-platform-parity"' in workflow
-    assert "BreakBlocks-Launcher-0.9.20-Windows-test" in workflow
+    assert "- main" in workflow
+    assert "BreakBlocks-Launcher-${{ env.VERSION }}-Windows-test" in workflow
     assert "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" in workflow
     assert "BreakBlocks-Launcher-${VERSION}-SteamDeck-x86_64.tar.gz" in workflow
-    assert "BreakBlocks-Launcher-0.9.20-Linux-test" in workflow
+    assert "BreakBlocks-Launcher-${{ env.VERSION }}-Linux-test" in workflow
     assert "gh release create" not in workflow
     assert "SIGNING_CERTIFICATE" not in workflow
 

@@ -4,14 +4,7 @@ on:
   workflow_dispatch:
   push:
     branches:
-      - "build/0.9.13-ui-polish"
-      - "build/0.9.14-windows-chat-overlay"
-      - "build/0.9.15-windows-single-archive"
-      - "build/0.9.16-windows-overlay-hotkey"
-      - "build/0.9.17-windows-overlay-redraw"
-      - "build/0.9.18-windows-chat-notifications"
-      - "build/0.9.19-windows-chat-visibility"
-      - "build/0.9.20-platform-parity"
+      - main
 
 permissions:
   contents: read
@@ -60,13 +53,12 @@ jobs:
           }
       - uses: actions/upload-artifact@v4
         with:
-          name: BreakBlocks-Launcher-0.9.20-Windows-test
+          name: BreakBlocks-Launcher-${{ env.VERSION }}-Windows-test
           path: dist/BreakBlocks-Launcher/
           if-no-files-found: error
           retention-days: 14
 
   linux:
-    if: github.ref_name == 'build/0.9.13-ui-polish' || github.ref_name == 'build/0.9.20-platform-parity'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -106,7 +98,7 @@ jobs:
           dpkg-deb --contents "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" > /dev/null
       - uses: actions/upload-artifact@v4
         with:
-          name: BreakBlocks-Launcher-0.9.20-Linux-test
+          name: BreakBlocks-Launcher-${{ env.VERSION }}-Linux-test
           path: |
             BreakBlocks-Launcher-*-Ubuntu-amd64.deb
             BreakBlocks-Launcher-*-SteamDeck-x86_64.tar.gz
