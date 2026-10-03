@@ -52,7 +52,7 @@ Update checks activate after 0.9.20 is published as a GitHub Release with
 breakblocks-update.json and the matching platform packages. The launcher
 verifies the package before installation. Ubuntu asks for the normal
 administrator approval; portable Steam Deck builds replace themselves and
-restart. This local test archive is not a signed public release.
+restart. Windows packages are unsigned and may be warned about or blocked.
 
 Data and logs
 -------------

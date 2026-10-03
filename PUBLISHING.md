@@ -2,38 +2,33 @@
 
 ## Private test packages
 
-Before creating a public release, the **Build private test packages** workflow
+Before preparing a release, the **Build private test packages** workflow
 can be started manually from GitHub Actions. It runs the formatting and test
 suite and creates an unsigned Windows ZIP, Ubuntu `.deb`, and portable Steam
 Deck archive as private workflow artifacts retained for 14 days. These files
-are for testing only: the Windows executable is deliberately marked
-`UNSIGNED`, may trigger Windows security warnings, and is never published as a
-GitHub Release.
+are for testing only: the Windows executable is unsigned, may trigger Windows
+security warnings, and is never published as a GitHub Release by this workflow.
 
-The public release process below remains fail-closed and still requires the
-trusted Windows signing certificate.
+The release process below does not require a signing certificate. Review and
+publish the resulting draft release separately.
 
 Releases are built by `.github/workflows/release.yml`. Use `v<version>-alpha`
 for an Alpha prerelease and `v<version>` for a Stable full release. The workflow
-tests both platforms, creates PyInstaller one-folder packages, signs and
-verifies the Windows executable, builds the Ubuntu package, generates the
-matching update manifest, and publishes all files to one GitHub Release.
+tests both platforms, creates PyInstaller one-folder packages, verifies that
+the Windows executable is unsigned, builds the Ubuntu package, generates the
+matching update manifest, and attaches all files to a draft GitHub Release.
 
 ## One-time repository setup
 
-1. Obtain a publicly trusted Windows code-signing certificate for the legal
-   publisher. Do not use a self-signed certificate for public releases.
-2. Export the certificate and private key as a password-protected PFX file.
-3. Add `WINDOWS_SIGNING_CERT_BASE64` as a GitHub Actions secret containing the
-   base64-encoded PFX bytes.
-4. Add `WINDOWS_SIGNING_CERT_PASSWORD` as a GitHub Actions secret.
-5. Protect the release environment and restrict who can create release tags.
+Protect release tags and restrict who can publish GitHub Releases. There are no
+Windows certificate secrets to configure. Windows packages have no verified
+publisher identity and may be warned about or blocked by Windows or browsers.
 
 ## Legal release gate
 
 Before creating a public tag, complete every unresolved item in
 `LEGAL-RELEASE-CHECKLIST.md`. In particular, confirm the legal operator,
-monitored email address, governing jurisdiction, and code-signing publisher.
+monitored email address, and governing jurisdiction.
 The embedded web chat is restricted to the fixed BreakBlocks URL and keeps its
 website session in an isolated local profile, but a stable public release still
 requires the site's operator, cookie/session retention, moderation, and age
@@ -44,10 +39,10 @@ The release jobs collect licence files from the exact Python dependencies and
 runtime used for each platform. A missing or mismatched dependency licence is a
 release failure, not a warning.
 
-The release workflow fails closed when signing credentials are absent or when
-Windows reports an invalid Authenticode signature. Signing establishes the
-publisher identity; Microsoft Defender SmartScreen reputation is managed by
-Microsoft and may still take time to build for a new certificate.
+The release workflow verifies that the Windows executable is unsigned and
+creates a draft with that fact in its notes. The draft must be inspected and
+published manually. Do not tell users to turn off browser or Windows security
+features to run the launcher.
 
 ## Publish a release
 
@@ -60,6 +55,8 @@ Microsoft and may still take time to build for a new certificate.
 4. Commit the exact source to publish.
 5. Create and push `v<version>-alpha` for an Alpha prerelease, or `v<version>`
    for a Stable full release.
+6. Inspect the draft assets, source archive, update manifest, checksums, and
+   release notes. Publish the draft only after the release checklist is done.
 
 The generated `breakblocks-update.json` contains separate entries for the
 Windows ZIP, Ubuntu `.deb`, and portable Linux/Steam Deck archive, including

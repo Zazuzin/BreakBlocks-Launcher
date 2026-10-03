@@ -130,7 +130,7 @@ def detect_install_root(app_directory: pathlib.Path) -> pathlib.Path | None:
 
 
 class UpdateClient:
-    """Read the signed-release feed and stage verified portable packages."""
+    """Read the release feed and stage checksum-verified portable packages."""
 
     def __init__(
         self,

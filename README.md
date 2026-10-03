@@ -62,7 +62,7 @@ python -m ruff check *.py tests tools
 PYTHONPATH=. sh -c 'for test_file in tests/test_*.py; do python "$test_file" || exit; done'
 ```
 
-Release builds and Windows signing are documented in [PUBLISHING.md](PUBLISHING.md).
+Release builds and unsigned Windows distribution are documented in [PUBLISHING.md](PUBLISHING.md).
 Release changes are tracked in [CHANGELOG.md](CHANGELOG.md).
 Release legal checks are tracked in
 [LEGAL-RELEASE-CHECKLIST.md](LEGAL-RELEASE-CHECKLIST.md).

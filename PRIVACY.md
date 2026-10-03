@@ -95,9 +95,8 @@ your operating-system account may still be able to access locally stored
 launcher information, so use a protected user account and disk encryption.
 
 Launcher updates must come from the configured GitHub Release, use HTTPS, match
-the declared file size, and pass a SHA-256 check before installation. Public
-Windows releases are also intended to be signed with the configured publisher
-certificate.
+the declared file size, and pass a SHA-256 check before installation. Windows
+builds are unsigned, so the Windows publisher is not verified by a certificate.
 
 ## Children
 

@@ -61,13 +61,13 @@ Earlier improvements
 - Added verified one-click updates which download the correct Windows package,
   replace the portable installation after exit, and restart the launcher.
 
-Windows security and signing
-----------------------------
-This local test archive is not a signed public release and Windows may warn when
-it opens. The included publishing workflow will not create a public release
-unless a trusted Authenticode certificate is configured and the signature is
-verified. A valid signature identifies the publisher; SmartScreen reputation
-can still take time to build for a new certificate.
+Windows security
+----------------
+The Windows executable is unsigned, including in GitHub Releases. Windows or
+your browser may warn or block it because the publisher cannot be verified.
+Download only from the official BreakBlocks Launcher GitHub release page and
+check its SHA-256 checksum if you want to verify the file. Do not disable
+security protections to run it.
 
 Automatic updates
 -----------------

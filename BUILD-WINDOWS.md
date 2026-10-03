@@ -10,9 +10,8 @@ py -3.12 -m venv .venv
 .\packaging\windows\build.ps1
 ```
 
-The finished ZIP is written to `dist-release`. The local build is unsigned. A
-public release should be signed with a publicly trusted Authenticode certificate
-before it is distributed; see `PUBLISHING.md`.
+The finished ZIP is written to `dist-release`. Windows builds are unsigned and
+may trigger browser or Windows warnings; see `PUBLISHING.md`.
 
 The build script runs the formatter check, static checks, and every regression
 test before packaging. It also includes the GPL licence, launcher policies, and

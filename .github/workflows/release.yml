@@ -50,26 +50,17 @@ jobs:
         run: python tools/collect_dependency_licenses.py --output third-party-licenses
       - name: Build Windows package
         run: python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
-      - name: Sign Windows executable
+      - name: Verify unsigned Windows executable
         shell: pwsh
-        env:
-          SIGNING_CERTIFICATE: ${{ secrets.WINDOWS_SIGNING_CERT_BASE64 }}
-          SIGNING_PASSWORD: ${{ secrets.WINDOWS_SIGNING_CERT_PASSWORD }}
         run: |
-          if (-not $env:SIGNING_CERTIFICATE -or -not $env:SIGNING_PASSWORD) {
-            throw "Trusted Windows signing credentials are required for release publishing"
+          $executable = "dist\BreakBlocks Launcher\BreakBlocks Launcher.exe"
+          if (-not (Test-Path -LiteralPath $executable)) {
+            throw "The Windows executable is missing from the build"
           }
-          $certificate = Join-Path $env:RUNNER_TEMP "breakblocks-signing.pfx"
-          [IO.File]::WriteAllBytes($certificate, [Convert]::FromBase64String($env:SIGNING_CERTIFICATE))
-          $signTool = Get-ChildItem "${env:ProgramFiles(x86)}\Windows Kits\10\bin\*\x64\signtool.exe" |
-            Sort-Object FullName -Descending |
-            Select-Object -First 1
-          if (-not $signTool) { throw "signtool.exe was not found" }
-          & $signTool.FullName sign /fd SHA256 /td SHA256 /tr http://timestamp.digicert.com /f $certificate /p $env:SIGNING_PASSWORD "dist\BreakBlocks Launcher\BreakBlocks Launcher.exe"
-          if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          $signature = Get-AuthenticodeSignature "dist\BreakBlocks Launcher\BreakBlocks Launcher.exe"
-          if ($signature.Status -ne "Valid") { throw "Authenticode verification failed: $($signature.Status)" }
-          Remove-Item $certificate -Force
+          $signature = Get-AuthenticodeSignature $executable
+          if ($signature.Status -ne "NotSigned") {
+            throw "Expected an unsigned Windows executable: $($signature.Status)"
+          }
       - name: Package Windows release
         shell: pwsh
         run: |
@@ -176,7 +167,7 @@ jobs:
             --repository "$GITHUB_REPOSITORY" \
             --assets-dir release-assets \
             --output release-assets/breakblocks-update.json
-      - name: Publish GitHub Release
+      - name: Create draft GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
@@ -186,8 +177,17 @@ jobs:
             title="$title Alpha"
             prerelease+=(--prerelease)
           fi
+          cat > "$RUNNER_TEMP/breakblocks-release-notes.md" <<'EOF'
+          This is an unsigned Windows build. Windows and your browser may warn or block it.
+          Download only from this project's official GitHub release page. Check the SHA-256
+          checksum if you want to verify the download. Do not disable security protections
+          to run it.
+
+          See CHANGELOG.md in the source archive for changes in this version.
+          EOF
           gh release create "$GITHUB_REF_NAME" release-assets/* \
             --verify-tag \
-            --generate-notes \
+            --draft \
+            --notes-file "$RUNNER_TEMP/breakblocks-release-notes.md" \
             --title "$title" \
             "${prerelease[@]}"

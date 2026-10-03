@@ -1,6 +1,6 @@
 # Legal and Release Readiness Checklist
 
-Reviewed: 28 September 2026
+Reviewed: 3 October 2026
 
 This is a practical release checklist, not legal advice. It records what the
 launcher already does, what has been implemented in 0.9.13, and the few facts
@@ -29,8 +29,8 @@ that still need confirmation before a stable public release.
   user on systems that support POSIX permissions.
 - [x] Update packages must be attached to the selected GitHub Release, use
   HTTPS, match the declared size, and pass SHA-256 verification.
-- [x] The publishing workflow refuses an unsigned public Windows release and
-  verifies the resulting Authenticode signature.
+- [x] The release workflow checks that the Windows executable is unsigned and
+  creates a draft release with a clear Windows security warning for review.
 - [x] Bundled Python dependency licences are retained, and public packages gain
   a human-readable third-party notice index.
 - [x] The launcher's original source code is licensed under the GNU General
@@ -56,8 +56,6 @@ that still need confirmation before a stable public release.
 - [ ] **Web-chat service policy:** confirm the minimum age, moderation rules,
   server-side logging, cookie/session retention, and who operates the service
   before a stable public release.
-- [ ] **Code-signing identity:** confirm the publisher name that will appear on
-  the trusted Windows signing certificate and in release metadata.
 - [ ] **Website policy update:** approve the launcher additions in
   `WEBSITE-LEGAL-CHANGES.md` and publish them on BreakBlocks.com.
 - [ ] **UK data-protection administration:** use the ICO fee self-assessment for
@@ -75,8 +73,8 @@ that still need confirmation before a stable public release.
   redirect/device-code settings, and privacy/terms URLs match the public
   operator.
 - [ ] Build only from a protected release tag and inspect the source archive.
-- [ ] Confirm the Windows signature, timestamp, SHA-256 checksums, update
-  manifest, archive contents, and dependency licence bundle.
+- [ ] Confirm the unsigned Windows warning, SHA-256 checksums, update manifest,
+  archive contents, and dependency licence bundle.
 - [ ] Test removal of a Microsoft profile, deletion of local data, updater
   consent, Offline ownership enforcement, web-chat sign-in persistence, and
   website logout/session removal.
