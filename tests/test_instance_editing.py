@@ -6,8 +6,8 @@ import threading
 from pathlib import Path
 from types import SimpleNamespace
 
-import minecraft_backend
 import breakblocks_launcher
+import minecraft_backend
 
 
 def test_playtime_formatter_is_compact_and_stable():

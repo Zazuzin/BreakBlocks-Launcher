@@ -8,9 +8,9 @@ from types import SimpleNamespace
 
 from PIL import Image
 
+import breakblocks_launcher
 import display_environment
 import mod_sources
-import breakblocks_launcher
 
 
 def test_block_icon_catalogue():
@@ -76,7 +76,9 @@ def test_custom_icon_path_stays_inside_instance_root():
         store = SimpleNamespace(instances=Path(temporary) / "instances")
         store.instances.mkdir()
         launcher = SimpleNamespace(store=store)
-        safe = breakblocks_launcher.Launcher.instance_custom_icon_path(launcher, {"id": "safe-instance"})
+        safe = breakblocks_launcher.Launcher.instance_custom_icon_path(
+            launcher, {"id": "safe-instance"}
+        )
         assert safe == store.instances / "safe-instance" / "launcher-icon.png"
         try:
             breakblocks_launcher.Launcher.instance_custom_icon_path(launcher, {"id": "../escape"})
@@ -158,7 +160,9 @@ def test_fixed_launcher_layout_matches_the_requested_three_columns():
     source = Path(breakblocks_launcher.__file__).read_text()
     launcher_source = inspect.getsource(breakblocks_launcher.Launcher.launcher_ui)
     redraw_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas.redraw)
-    launch_card_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_launch_card)
+    launch_card_source = inspect.getsource(
+        breakblocks_launcher.LauncherDashboardCanvas._draw_launch_card
+    )
     assert 'text="READY TO LAUNCH"' in launch_card_source
     assert "self.launch_dashboard = LauncherDashboardCanvas(page, self)" in launcher_source
     assert 'self.launch_dashboard.grid(row=0, column=0, sticky="nsew")' in launcher_source
@@ -323,8 +327,12 @@ def test_discord_button_keeps_charcoal_background_with_a_complete_outline():
 
 def test_instance_icons_render_without_a_button_shell():
     launcher_source = inspect.getsource(breakblocks_launcher.Launcher.launcher_ui)
-    row_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_instances_card)
-    launch_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_launch_card)
+    row_source = inspect.getsource(
+        breakblocks_launcher.LauncherDashboardCanvas._draw_instances_card
+    )
+    launch_source = inspect.getsource(
+        breakblocks_launcher.LauncherDashboardCanvas._draw_launch_card
+    )
     assert "self.create_image(list_x1 + 42, top + 43, image=photo)" in row_source
     assert "self.create_image(x1 + 55, summary_top + 41, image=photo)" in launch_source
     assert "CTkButton" not in row_source
@@ -341,7 +349,9 @@ def test_active_profile_is_stably_sorted_to_the_top():
     ordered = breakblocks_launcher.active_account_first(accounts, "active")
     assert [account["id"] for account in ordered] == ["active", "first", "third"]
     assert [account["id"] for account in accounts] == ["first", "active", "third"]
-    account_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_accounts_card)
+    account_source = inspect.getsource(
+        breakblocks_launcher.LauncherDashboardCanvas._draw_accounts_card
+    )
     assert "accounts = active_account_first(" in account_source
 
 

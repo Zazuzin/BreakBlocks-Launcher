@@ -8,9 +8,9 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
+import breakblocks_launcher
 import chat_browser
 import launcher_update
-import breakblocks_launcher
 from app_config import APP_VERSION_NUMBER
 from tools import collect_dependency_licenses, generate_update_manifest
 

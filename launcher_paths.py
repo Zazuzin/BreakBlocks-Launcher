@@ -31,6 +31,7 @@ def migrate_legacy_data(preferred: pathlib.Path, legacy: pathlib.Path) -> None:
             return
     if not preferred.is_dir() or (preferred / "launcher.json").exists():
         return
+
     # The bootstrap can create the new log directory before Store starts.
     # Move each missing entry; launcher.json goes last, marking migration done.
     def move_missing_entries(source: pathlib.Path, destination: pathlib.Path) -> None:

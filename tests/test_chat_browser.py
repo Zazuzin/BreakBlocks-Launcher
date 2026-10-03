@@ -7,8 +7,8 @@ import tempfile
 from pathlib import Path
 from types import SimpleNamespace
 
-import chat_browser
 import breakblocks_launcher
+import chat_browser
 
 
 def test_chat_url_is_the_authenticated_breakblocks_connect_page():
@@ -257,7 +257,9 @@ def test_launcher_restores_and_clears_the_chat_unread_badge():
 
 def test_chat_unread_badge_matches_sidebar_and_hover_backgrounds():
     sidebar_source = inspect.getsource(breakblocks_launcher.Launcher.build_sidebar)
-    update_source = inspect.getsource(breakblocks_launcher.Launcher.update_chat_unread_badge_background)
+    update_source = inspect.getsource(
+        breakblocks_launcher.Launcher.update_chat_unread_badge_background
+    )
     assert "bg_color=SIDEBAR" in sidebar_source
     assert 'button.bind(\n                    "<Enter>"' in sidebar_source
     assert 'button.bind(\n                    "<Leave>"' in sidebar_source
