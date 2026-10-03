@@ -7,6 +7,7 @@
   Java, library, asset and native paths are rebased to the current data folder.
 - Select Java using the current Settings value at launch. Auto can download its
   required runtime if a previously selected system Java has been removed.
+- Count Minecraft playtime from process startup, excluding Java setup/downloads.
 - Store an absolute path for system Java instead of relying on a later PATH lookup.
 - Identify missing launch files before starting Minecraft. Windows process-start
   errors now show the Java and working-folder paths, with a Repair action, while

@@ -70,7 +70,7 @@ def launch_failure(instance, expected, **options):
 
 def test_moved_data_paths_are_rebased_and_saved_before_launch():
     with tempfile.TemporaryDirectory() as temporary:
-        base = Path(temporary)
+        base = Path(temporary).resolve()
         old_root = base / "Zazu Launcher"
         instance, original = installed_instance(old_root)
         java = old_root / "java" / "21" / "runtime" / "bin" / "java.exe"
@@ -109,7 +109,7 @@ def test_moved_data_paths_are_rebased_and_saved_before_launch():
 
 def test_relocation_leaves_external_java_and_similarly_named_roots_alone():
     with tempfile.TemporaryDirectory() as temporary:
-        base = Path(temporary)
+        base = Path(temporary).resolve()
         old_root = base / "old"
         instance, record = installed_instance(old_root)
         record["classpath"].append(str(base / "old-other" / "external.jar"))
@@ -130,7 +130,7 @@ def test_relocation_leaves_external_java_and_similarly_named_roots_alone():
 
 def test_java_is_selected_using_current_settings_and_required_major():
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve()
         instance, record = installed_instance(root)
         record["java"] = str(root / "removed-java.exe")
         (instance / "instance-launch.json").write_text(json.dumps(record))
@@ -174,7 +174,7 @@ def test_system_java_is_checked_and_stored_as_an_absolute_path():
 
 def test_auto_java_uses_moved_managed_runtime_without_network():
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve()
         executable = "java.exe" if backend.SYSTEM_OS == "windows" else "java"
         runtime = root / "java" / "21" / "runtime" / "bin" / executable
         runtime.parent.mkdir(parents=True)
@@ -186,7 +186,7 @@ def test_auto_java_uses_moved_managed_runtime_without_network():
 
 def test_auto_java_downloads_a_runtime_when_the_old_system_java_is_gone():
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve()
         instance, record = installed_instance(root)
         record["java"] = str(root / "removed-system-java.exe")
         (instance / "instance-launch.json").write_text(json.dumps(record))
@@ -226,7 +226,7 @@ def test_auto_java_downloads_a_runtime_when_the_old_system_java_is_gone():
 
 def test_missing_java_names_the_runtime_without_starting_minecraft():
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve()
         instance, record = installed_instance(root)
         record["java"] = str(root / "missing" / "java.exe")
         (instance / "instance-launch.json").write_text(json.dumps(record))
@@ -236,7 +236,7 @@ def test_missing_java_names_the_runtime_without_starting_minecraft():
 
 def test_missing_installation_files_are_named_before_java_selection():
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary)
+        root = Path(temporary).resolve()
         instance, record = installed_instance(root)
         Path(record["classpath"][0]).unlink()
         with patch.object(backend, "Installer") as installer:
@@ -249,7 +249,7 @@ def test_missing_installation_files_are_named_before_java_selection():
 
 def test_missing_or_damaged_profile_offers_repair():
     with tempfile.TemporaryDirectory() as temporary:
-        instance, _record = installed_instance(Path(temporary))
+        instance, _record = installed_instance(Path(temporary).resolve())
         profile = instance / "instance-launch.json"
         profile.unlink()
         launch_failure(instance, "The instance launch profile is missing")
@@ -259,7 +259,7 @@ def test_missing_or_damaged_profile_offers_repair():
 
 def test_process_start_error_keeps_paths_but_excludes_account_tokens():
     with tempfile.TemporaryDirectory() as temporary:
-        instance, record = installed_instance(Path(temporary))
+        instance, record = installed_instance(Path(temporary).resolve())
         with patch.object(
             backend.subprocess,
             "Popen",
@@ -285,7 +285,7 @@ def test_real_child_starts_from_moved_data_folder_with_spaces():
     # Use Python as a harmless process shim. It accepts -X options; everything
     # after -c is script argv. This checks real cwd/argv/log handling on both OSes.
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary) / "Zazu Launcher"
+        root = Path(temporary).resolve() / "Zazu Launcher"
         instance, record = installed_instance(root)
         record["arguments"]["jvm"] = [
             "-c",

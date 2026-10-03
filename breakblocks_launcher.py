@@ -6649,8 +6649,6 @@ class Launcher(ctk.CTk):
                     self.post_ui(lambda: self.status.set("Checking Microsoft session…"))
                     self.ensure_microsoft_session(account)
                 launch_account = dict(account, memory=launch_memory)
-                launched_at = time.time()
-                started = time.monotonic()
                 process = minecraft_backend.launch(
                     self.store.instances / ident,
                     launch_account,
@@ -6659,6 +6657,8 @@ class Launcher(ctk.CTk):
                         lambda label=label: self.status.set(label)
                     ),
                 )
+                launched_at = time.time()
+                started = time.monotonic()
                 self.post_ui(
                     lambda: (
                         self.mark_instance_running(ident, started, process.pid),

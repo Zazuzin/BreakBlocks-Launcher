@@ -203,6 +203,64 @@ def test_game_launch_is_blocked_during_mod_operations():
         assert notices[-1][0][0] == "Instance task in progress"
 
 
+def test_java_setup_time_is_excluded_from_minecraft_playtime():
+    clock = [0.0]
+    recorded = []
+    instance = {"id": "example", "installed": True, "memory": 4096}
+    account = {"id": "player", "name": "Player", "type": "Microsoft"}
+    launcher = SimpleNamespace(
+        selected_instance_id="example",
+        store=SimpleNamespace(
+            instances=Path("instances"),
+            data={
+                "instances": [instance],
+                "accounts": [account],
+                "settings": {"active_account": "player", "java": "auto"},
+            },
+        ),
+        active_installs=set(),
+        running_instances=set(),
+        launching_instances=set(),
+        closing=False,
+        status=SimpleNamespace(set=lambda _value: None),
+        show_notice=lambda *_args, **_kwargs: None,
+        refresh_instances=lambda: None,
+        post_ui=lambda callback: callback(),
+        ensure_microsoft_session=lambda _account: None,
+        mark_instance_running=lambda *_args: None,
+        record_instance_playtime=lambda ident, elapsed, launched_at: recorded.append(
+            (ident, elapsed, launched_at)
+        ),
+        finish_instance_session=lambda *_args: None,
+    )
+
+    def wait():
+        clock[0] += 20.0
+        return 0
+
+    def start_game(*_args, **options):
+        assert options["java_override"] == "auto"
+        clock[0] += 100.0  # Runtime selection/download takes longer than the session.
+        return SimpleNamespace(pid=123, wait=wait)
+
+    class Thread:
+        def __init__(self, target, **_kwargs):
+            self.target = target
+
+        def start(self):
+            self.target()
+
+    with (
+        patch.object(app.minecraft_backend, "launch", start_game),
+        patch.object(app.minecraft_backend, "newest_crash_report", return_value=None),
+        patch.object(app.time, "monotonic", lambda: clock[0]),
+        patch.object(app.time, "time", lambda: 1000.0 + clock[0]),
+        patch.object(app.threading, "Thread", Thread),
+    ):
+        app.Launcher.launch(launcher)
+    assert recorded == [("example", 20.0, 1100.0)]
+
+
 if __name__ == "__main__":
     tests = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
     for test in tests:
