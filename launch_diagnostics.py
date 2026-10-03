@@ -26,7 +26,7 @@ def diagnose_text(text):
         return _result(
             "The instance launch profile is damaged",
             "The saved Minecraft launch profile could not be read.",
-            "Use Repair installation in Instance Tools to rebuild the launch profile.",
+            "Right-click the instance and choose Repair installation to rebuild the launch profile.",
             "repair",
         )
     if "instance launch profile is missing" in lowered or (
@@ -35,14 +35,14 @@ def diagnose_text(text):
         return _result(
             "The instance launch profile is missing",
             "Minecraft's installed launch profile could not be found.",
-            "Use Repair installation in Instance Tools to rebuild the launch profile.",
+            "Right-click the instance and choose Repair installation to rebuild the launch profile.",
             "repair",
         )
     if "minecraft installation files are missing" in lowered:
         return _result(
             "Minecraft installation files are missing",
             "A required client, library, asset index or native-library folder could not be found.",
-            "Use View error to see the missing paths, then Repair installation in Instance Tools.",
+            "Use View error to see the missing paths, then right-click the instance and choose Repair installation.",
             "repair",
         )
     if "minecraft could not start its java process" in lowered:
@@ -57,7 +57,7 @@ def diagnose_text(text):
         return _result(
             "A launch file or folder could not be found",
             "Windows reports a missing path, but this error does not identify which one.",
-            "Set Java to Auto in Settings, then use Repair installation in Instance Tools and retry.",
+            "Set Java to Auto in Settings, then right-click the instance, choose Repair installation and retry.",
             "repair",
         )
     if "unsupportedclassversionerror" in lowered or "compiled by a more recent version" in lowered:
@@ -67,7 +67,7 @@ def diagnose_text(text):
         return _result(
             "Java version is too old",
             "Minecraft or one of its mods was compiled for a newer Java version." + detail,
-            "Set Java to Auto in Settings, then use Repair installation in Instance Tools. "
+            "Set Java to Auto in Settings, then right-click the instance and choose Repair installation. "
             "If the error names a mod, also check its Minecraft and Java requirements.",
             "repair",
         )
@@ -155,7 +155,7 @@ def diagnose_text(text):
         return _result(
             "Minecraft installation files are missing or damaged",
             "Java could not load a required Minecraft launch file.",
-            "Use Repair installation in Instance Tools to download and rebuild the launch files.",
+            "Right-click the instance and choose Repair installation to download and rebuild the launch files.",
             "repair",
         )
     if "mixin" in lowered and any(

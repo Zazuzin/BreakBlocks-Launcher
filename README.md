@@ -8,7 +8,7 @@ A Minecraft: Java Edition launcher for the BreakBlocks community. Manage your
 accounts, instances and mods, and stay connected through the built-in
 BreakBlocks chat. Available for Windows, Ubuntu and Steam Deck.
 
-**Current version: 0.9.24 Alpha**
+**Current version: 0.9.25 Alpha**
 
 [Downloads](https://github.com/Zazuzin/BreakBlocks-Launcher/releases) ·
 [Alpha test builds](https://github.com/Zazuzin/BreakBlocks-Launcher/actions/workflows/test-build.yml) ·
@@ -80,7 +80,7 @@ The `.deb` package targets **64-bit Ubuntu 24.04**.
 2. Open a terminal in the folder containing the package and run:
 
    ```bash
-   sudo apt install ./BreakBlocks-Launcher-0.9.24-Ubuntu-amd64.deb
+   sudo apt install ./BreakBlocks-Launcher-0.9.25-Ubuntu-amd64.deb
    ```
 
 3. Open **BreakBlocks Launcher** from your applications menu, or run
@@ -106,9 +106,10 @@ required. The in-game chat overlay is currently available on Windows only.
 
 ## Backups and moving instances
 
-Select an instance and open **Instance Tools** for **Backups / Restore**,
+Right-click an instance for **Backups / Restore**,
 **Duplicate instance**, **Export instance**, or **Repair installation**.
-Use **Import** above the instance list to load a BreakBlocks instance ZIP.
+Choose **Import instance** from the menu, or **Import** above the instance list,
+to load a BreakBlocks instance ZIP.
 **Mods Folder** on the main screen opens the selected instance's mod directory.
 
 Recovery snapshots contain mods, configs, game options and the launch profile;
@@ -141,8 +142,9 @@ A video tutorial is planned. The link will be added here when it is ready.
 
 Existing profiles, instances and chat sessions are preserved when updating.
 Launch paths are adjusted automatically if the launcher data folder moved.
-If Windows reports a missing file, set **Java** to **Auto** in Settings and use
-**Instance Tools → Repair installation**. **View error** shows the affected paths.
+If Windows reports a missing file, set **Java** to **Auto** in Settings, then
+right-click the instance and choose **Repair installation**.
+**View error** shows the affected paths.
 Use **Settings → Open Launcher Folder** to find your local files.
 
 ## Credits

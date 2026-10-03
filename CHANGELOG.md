@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.25 Alpha (Windows and Linux)
+
+- Replaced the Instance Tools button and chooser with a right-click menu on each
+  instance. Backups / Restore, Duplicate, Export, Import and Repair open their
+  existing dialogs and actions for the clicked instance.
+- Removed the launch-profile strip and restored the full-width Launch Minecraft
+  button. Mods Folder remains a direct main-screen button.
+
 ## 0.9.24 Alpha (Windows and Linux)
 
 - Aligned the instance count, Create instance and Import controls on one row.

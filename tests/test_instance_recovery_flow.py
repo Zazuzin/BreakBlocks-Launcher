@@ -261,6 +261,125 @@ def test_java_setup_time_is_excluded_from_minecraft_playtime():
     assert recorded == [("example", 20.0, 1100.0)]
 
 
+class ContextMenu:
+    def __init__(self, *_args, **_options):
+        self.entries = []
+        self.destroyed = False
+        self.released = False
+
+    def add_command(self, **options):
+        self.entries.append(options)
+
+    def tk_popup(self, x, y):
+        self.position = (x, y)
+
+    def grab_release(self):
+        self.released = True
+
+    def destroy(self):
+        self.destroyed = True
+
+
+def context_menu_fixture():
+    instances = [{"id": "first", "name": "First"}, {"id": "second", "name": "Second"}]
+    actions = []
+    launcher = SimpleNamespace(
+        store=SimpleNamespace(data={"instances": instances}),
+        selected_instance_id="first",
+        instance_context_menu=ContextMenu(),
+        ui_font="Arial",
+        running_instances={},
+        launching_instances=set(),
+        active_installs=set(),
+        instance_tasks=set(),
+        refresh_instances=lambda: None,
+        instance_backups=lambda instance: actions.append(("backups", instance["id"])),
+        instance_transfer_dialog=lambda instance, mode: actions.append((mode, instance["id"])),
+        import_instance_archive=lambda: actions.append(("import", None)),
+        repair_instance=lambda instance: actions.append(("repair", instance["id"])),
+    )
+    launcher.select_instance = MethodType(app.Launcher.select_instance, launcher)
+    launcher.instance_is_busy = MethodType(app.Launcher.instance_is_busy, launcher)
+    return launcher, actions
+
+
+def test_instance_context_menu_selects_clicked_instance_and_retains_its_tool_target():
+    launcher, actions = context_menu_fixture()
+    previous = launcher.instance_context_menu
+    with patch.object(app.tk, "Menu", ContextMenu):
+        app.Launcher.show_instance_context_menu(launcher, "second", 230, 440)
+    menu = launcher.instance_context_menu
+    assert launcher.selected_instance_id == "second"
+    assert previous.destroyed and menu.released
+    assert menu.position == (230, 440)
+    assert [entry["label"] for entry in menu.entries] == [
+        "Backups / Restore",
+        "Duplicate instance",
+        "Export instance",
+        "Import instance",
+        "Repair installation",
+    ]
+    launcher.selected_instance_id = "first"
+    for entry in menu.entries:
+        assert entry["state"] == "normal"
+        entry["command"]()
+    assert actions == [
+        ("backups", "second"),
+        ("duplicate", "second"),
+        ("export", "second"),
+        ("import", None),
+        ("repair", "second"),
+    ]
+    with patch.object(app.tk, "Menu", ContextMenu):
+        app.Launcher.show_instance_context_menu(launcher, "removed", 0, 0)
+    assert launcher.instance_context_menu is menu
+    assert not menu.destroyed
+
+
+def test_instance_context_menu_disables_file_tools_while_instance_is_busy():
+    for activity in ("running", "launching", "installing", "mods", "transfer"):
+        launcher, _actions = context_menu_fixture()
+        if activity == "running":
+            launcher.running_instances["second"] = object()
+        elif activity == "launching":
+            launcher.launching_instances.add("second")
+        else:
+            key = "modrinth:second" if activity == "mods" else "second"
+            launcher.active_installs.add(key)
+            if activity == "transfer":
+                launcher.instance_tasks.add(key)
+        with patch.object(app.tk, "Menu", ContextMenu):
+            app.Launcher.show_instance_context_menu(launcher, "second", 1, 2)
+        entries = launcher.instance_context_menu.entries
+        assert all(entries[index]["state"] == "disabled" for index in (0, 1, 2, 4))
+        assert entries[3]["state"] == ("disabled" if activity == "transfer" else "normal")
+
+
+def test_dashboard_right_click_only_targets_instance_rows_and_respects_modals():
+    opened = []
+    launcher = SimpleNamespace(
+        show_instance_context_menu=lambda *args: opened.append(args),
+        modal_action_blocked=lambda: False,
+    )
+    canvas = object.__new__(app.LauncherDashboardCanvas)
+    canvas.launcher = launcher
+    canvas._hit_regions = [
+        {"bounds": (10, 20, 100, 60), "instance_id": "scrolled-instance"},
+        {"bounds": (110, 20, 150, 60)},
+    ]
+    event = SimpleNamespace(x=50, y=40, x_root=250, y_root=340)
+    assert canvas._on_instance_context_menu(event) == "break"
+    assert opened == [("scrolled-instance", 250, 340)]
+    event.x = 125  # A regular dashboard button does not open instance tools.
+    assert canvas._on_instance_context_menu(event) is None
+    event.x = 105  # Neither does the gap or scrollbar beside a row.
+    assert canvas._on_instance_context_menu(event) is None
+    event.x = 50
+    launcher.modal_action_blocked = lambda: True
+    assert canvas._on_instance_context_menu(event) == "break"
+    assert len(opened) == 1
+
+
 if __name__ == "__main__":
     tests = [value for name, value in sorted(globals().items()) if name.startswith("test_")]
     for test in tests:

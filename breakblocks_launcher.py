@@ -442,6 +442,7 @@ class LauncherDashboardCanvas(tk.Canvas):
         self.bind("<ButtonPress-1>", self._on_button_press, add="+")
         self.bind("<B1-Motion>", self._on_button_drag, add="+")
         self.bind("<ButtonRelease-1>", self._on_button_release, add="+")
+        self.bind("<Button-3>", self._on_instance_context_menu, add="+")
         self.bind("<MouseWheel>", self._on_mousewheel, add="+")
         self.bind("<Button-4>", lambda event: self._scroll_at(event.x, event.y, -1), add="+")
         self.bind("<Button-5>", lambda event: self._scroll_at(event.x, event.y, 1), add="+")
@@ -663,6 +664,18 @@ class LauncherDashboardCanvas(tk.Canvas):
         direction = -1 if event.delta > 0 else 1
         return self._scroll_at(event.x, event.y, direction)
 
+    def _on_instance_context_menu(self, event):
+        blocker = getattr(self.launcher, "modal_action_blocked", None)
+        if callable(blocker) and blocker():
+            return "break"
+        region = self._hit_at(event.x, event.y)
+        if region is not None and region.get("instance_id") is not None:
+            self.launcher.show_instance_context_menu(
+                region["instance_id"], event.x_root, event.y_root
+            )
+            return "break"
+        return None
+
     def _scroll_at(self, x, y, direction):
         for key, region in self._scroll_regions.items():
             if region["x1"] <= x <= region["x2"] and region["y1"] <= y <= region["y2"]:
@@ -806,10 +819,6 @@ class LauncherDashboardCanvas(tk.Canvas):
         instances = launcher.store.data["instances"]
         instance = next(
             (item for item in instances if item.get("id") == launcher.selected_instance_id), None
-        )
-        active_id = launcher.store.data["settings"].get("active_account", "")
-        account = next(
-            (item for item in launcher.store.data["accounts"] if item.get("id") == active_id), None
         )
         installing = bool(instance and instance.get("id") in launcher.active_installs)
         running = bool(
@@ -964,40 +973,6 @@ class LauncherDashboardCanvas(tk.Canvas):
         launch_top = bottom - 40
         actions_top = launch_top - 38
         progress_top = actions_top - 28 if self.progress_visible else actions_top
-        profile_bottom = progress_top - 6
-        profile_top = profile_bottom - 38
-        self._rounded_rectangle(
-            x1 + 12,
-            profile_top,
-            x2 - 12,
-            profile_bottom,
-            9,
-            fill=DARK_SURFACE,
-            outline=BORDER,
-            width=1,
-        )
-        self.create_text(
-            x1 + 21,
-            profile_top + 11,
-            text="LAUNCH PROFILE",
-            fill=MUTED,
-            font=self._font(8, "bold"),
-            anchor="w",
-        )
-        profile_text = (
-            f"{account['name']}  •  {account_type_label(account)}"
-            if account
-            else "No active profile — choose an account on the right"
-        )
-        self.create_text(
-            x1 + 21,
-            profile_top + 27,
-            text=self._clean_text(profile_text, 75),
-            fill=TEXT if account else MUTED,
-            font=self._font(10, "bold"),
-            anchor="w",
-            width=max(120, x2 - x1 - 44),
-        )
 
         action_labels = (
             ("Modrinth", launcher.open_modrinth_manager, selected, SURFACE_ALT, SURFACE_HOVER),
@@ -1070,7 +1045,7 @@ class LauncherDashboardCanvas(tk.Canvas):
         self._button(
             x1 + 12,
             launch_top,
-            x2 - 158,
+            x2 - 12,
             bottom,
             launch_text,
             launcher.launch,
@@ -1078,17 +1053,6 @@ class LauncherDashboardCanvas(tk.Canvas):
             hover=ACCENT_HOVER,
             enabled=can_launch,
             font_size=12,
-        )
-        self._button(
-            x2 - 152,
-            launch_top,
-            x2 - 12,
-            bottom,
-            "Instance Tools",
-            launcher.instance_tools,
-            fill=SURFACE_ALT,
-            hover=SURFACE_HOVER,
-            enabled=selected,
         )
 
     def _draw_instances_card(self, x1, y1, x2, y2):
@@ -1101,7 +1065,7 @@ class LauncherDashboardCanvas(tk.Canvas):
         self.create_text(
             x1 + 18,
             y1 + 53,
-            text="Your Minecraft environments",
+            text="Right-click an instance for tools",
             fill=MUTED,
             font=self._font(10),
             anchor="w",
@@ -1186,13 +1150,14 @@ class LauncherDashboardCanvas(tk.Canvas):
                 width=2 if selected else 1,
             )
             hover = "#4c4c4c" if selected else SURFACE_HOVER
-            self._register_hit(
+            region = self._register_hit(
                 (list_x1, top, content_right, bottom),
                 lambda ident=instance.get("id"): launcher.select_instance(ident),
                 shape,
                 fill,
                 hover,
             )
+            region["instance_id"] = instance.get("id")
             photo = self._instance_photo(instance, 54)
             if photo:
                 self.create_image(list_x1 + 42, top + 43, image=photo)
@@ -2241,6 +2206,7 @@ class Launcher(ctk.CTk):
         self.chat_visible_file.unlink(missing_ok=True)
         self.chat_unread_badge = None
         self.chat_context_menu = None
+        self.instance_context_menu = None
         self.ui_events = queue.Queue()
         self.store_lock = threading.RLock()
         self.running_instances = {}
@@ -3978,89 +3944,52 @@ class Launcher(ctk.CTk):
             return None
         return instance
 
-    def instance_tools(self):
+    def show_instance_context_menu(self, ident, x_root, y_root):
         instance = next(
-            (
-                item
-                for item in self.store.data["instances"]
-                if item["id"] == self.selected_instance_id
-            ),
-            None,
+            (item for item in self.store.data["instances"] if item["id"] == ident), None
         )
-        if not instance:
-            self.show_notice("Select an instance", "Choose a Minecraft instance first.")
+        if instance is None:
             return
-        window, body = self.make_dialog("Instance Tools", 610, 520)
-        ctk.CTkLabel(body, text="Instance Tools", text_color=TEXT, font=self.font_title).pack(
-            anchor="w", padx=26, pady=(22, 4)
+        self.select_instance(ident)
+        previous_menu = self.instance_context_menu
+        if previous_menu is not None:
+            previous_menu.destroy()
+        menu = tk.Menu(
+            self,
+            tearoff=False,
+            bg=CONTROL_SURFACE,
+            fg=TEXT,
+            activebackground=ACCENT,
+            activeforeground="#ffffff",
+            borderwidth=1,
+            relief="flat",
+            font=(self.ui_font, 11),
         )
-        ctk.CTkLabel(body, text=instance["name"], text_color=MUTED, font=self.font_body).pack(
-            anchor="w", padx=26, pady=(0, 14)
-        )
-
-        def invoke(callback):
-            window.destroy()
-            callback()
-
+        self.instance_context_menu = menu
+        idle = not self.instance_is_busy(instance)
         choices = (
-            (
-                "Backups / Restore",
-                "Keep the last five mod, config and launch-profile snapshots.",
-                lambda: self.instance_backups(instance),
-            ),
+            ("Backups / Restore", lambda: self.instance_backups(instance), idle),
             (
                 "Duplicate instance",
-                "Create a separate copy for testing.",
                 lambda: self.instance_transfer_dialog(instance, "duplicate"),
+                idle,
             ),
             (
                 "Export instance",
-                "Save a ZIP to move to another computer or platform.",
                 lambda: self.instance_transfer_dialog(instance, "export"),
+                idle,
             ),
-            (
-                "Import instance",
-                "Load a BreakBlocks instance ZIP as a new instance.",
-                self.import_instance_archive,
-            ),
-            (
-                "Repair installation",
-                "Rebuild Minecraft launch files and the Java selection.",
-                lambda: self.repair_instance(instance),
-            ),
+            ("Import instance", self.import_instance_archive, not self.instance_tasks),
+            ("Repair installation", lambda: self.repair_instance(instance), idle),
         )
-        for label, description, callback in choices:
-            row = ctk.CTkFrame(body, fg_color=DARK_SURFACE, corner_radius=10)
-            row.pack(fill="x", padx=26, pady=4)
-            ctk.CTkButton(
-                row,
-                text=label,
-                command=lambda fn=callback: invoke(fn),
-                width=175,
-                height=38,
-                fg_color=SURFACE_ALT,
-                hover_color=SURFACE_HOVER,
-                font=self.font_small,
-            ).pack(side="left", padx=10, pady=10)
-            ctk.CTkLabel(
-                row,
-                text=description,
-                wraplength=280,
-                justify="left",
-                anchor="w",
-                text_color=MUTED,
-                font=self.font_small,
-            ).pack(side="left", padx=(0, 10))
-        ctk.CTkButton(
-            body,
-            text="Close",
-            command=window.destroy,
-            width=105,
-            height=36,
-            fg_color=ACCENT,
-            hover_color=ACCENT_HOVER,
-            font=self.font_button,
-        ).pack(pady=14)
+        for label, callback, enabled in choices:
+            menu.add_command(
+                label=label, command=callback, state="normal" if enabled else "disabled"
+            )
+        try:
+            menu.tk_popup(x_root, y_root)
+        finally:
+            menu.grab_release()
 
     def run_instance_task(self, instance, label, operation, complete):
         if instance is not None and not self.idle_instance(instance):

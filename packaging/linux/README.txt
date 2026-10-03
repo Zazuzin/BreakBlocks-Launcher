@@ -1,10 +1,10 @@
-BreakBlocks Launcher 0.9.24 Alpha - Ubuntu amd64 package
+BreakBlocks Launcher 0.9.25 Alpha - Ubuntu amd64 package
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
 
 Install with:
-  sudo apt install ./BreakBlocks-Launcher-0.9.24-Ubuntu-amd64.deb
+  sudo apt install ./BreakBlocks-Launcher-0.9.25-Ubuntu-amd64.deb
 
 Future updates can be installed from the launcher's update prompt. The package
 is downloaded and verified first, then Ubuntu asks for administrator approval.
@@ -29,10 +29,11 @@ available in the Windows build.
 See PRIVACY.md, TERMS.md, THIRD-PARTY-NOTICES.md, and LICENSE for the launcher
 policies and licences.
 
-INSTANCE TOOLS
---------------
-Select an instance and open Instance Tools for Backups / Restore, Duplicate,
-Export, and Repair installation. Import is above the instance list.
+INSTANCE RIGHT-CLICK MENU
+-------------------------
+Right-click an instance for Backups / Restore, Duplicate instance, Export
+instance, Import instance, and Repair installation. Import is also above
+the instance list.
 
 Backups are automatic before mod and loader changes; the five newest snapshots
 are kept per instance. They include mods, configs, options and the launch

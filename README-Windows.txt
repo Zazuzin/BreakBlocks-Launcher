@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.24 Alpha - Windows x64 test build
+BreakBlocks Launcher 0.9.25 Alpha - Windows x64 test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -118,10 +118,11 @@ Launcher privacy: PRIVACY.md
 Launcher terms: TERMS.md
 Third-party notices: THIRD-PARTY-NOTICES.md
 
-INSTANCE TOOLS
---------------
-Select an instance and open Instance Tools for Backups / Restore, Duplicate,
-Export, and Repair installation. Import is above the instance list.
+INSTANCE RIGHT-CLICK MENU
+-------------------------
+Right-click an instance for Backups / Restore, Duplicate instance, Export
+instance, Import instance, and Repair installation. Import is also above
+the instance list.
 
 Backups are automatic before mod and loader changes; the five newest snapshots
 are kept per instance. They include mods, configs, options and the launch

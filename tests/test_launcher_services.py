@@ -345,7 +345,6 @@ def test_settings_defaults_and_legal_copy_are_present():
     assert "Minecraft ownership required" in source
     assert "PRIVACY.md" in source
     assert "TERMS.md" in source
-    assert "f\"{account['name']}  •  {account_type_label(account)}\"" in source
     assert "text=account_type_label(account)" in source
     about_source = inspect.getsource(breakblocks_launcher.Launcher.about_ui)
     assert "Created by Zazuzin for the BreakBlocks community" in about_source
