@@ -39,6 +39,13 @@ def test_unknown_exit_does_not_invent_a_cause():
     assert result["action"] is None
 
 
+def test_windows_missing_file_reports_uncertainty_and_offers_repair():
+    result = diagnostics.diagnose_text("[WinError 2] The system cannot find the file specified")
+    assert result["action"] == "repair"
+    assert "does not identify which" in result["explanation"]
+    assert "Java runtime" not in result["title"]
+
+
 def test_missing_java_and_launch_profile_offer_repair():
     assert (
         diagnostics.diagnose_text("[Errno 2] No such file or directory: '/runtime/bin/java'")[

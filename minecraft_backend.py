@@ -9,6 +9,7 @@ import pathlib
 import platform
 import re
 import shlex
+import shutil
 import subprocess
 import tarfile
 import threading
@@ -104,7 +105,7 @@ class Installer:
         progress: ProgressCallback | None = None,
         java_override: str = "auto",
     ) -> None:
-        self.root = pathlib.Path(root)
+        self.root = pathlib.Path(root).resolve()
         self.progress = progress or (lambda _percent, _label: None)
         self.java_override = java_override
 
@@ -187,7 +188,7 @@ class Installer:
                 future.result()
 
     def install(self, instance: str | pathlib.Path, version: str, loader: str) -> dict[str, Any]:
-        instance_root = pathlib.Path(instance)
+        instance_root = pathlib.Path(instance).resolve()
         game_directory = instance_root / "minecraft"
         game_directory.mkdir(parents=True, exist_ok=True)
 
@@ -476,14 +477,16 @@ class Installer:
 
     def java(self, major: int, start: int = 5, end: int = 15) -> pathlib.Path:
         if self.java_override and self.java_override != "auto":
-            candidate = pathlib.Path(self.java_override).expanduser()
+            candidate = pathlib.Path(self.java_override).expanduser().resolve()
             if not candidate.is_file():
-                raise RuntimeError("The configured Java executable was not found")
+                raise RuntimeError(f"The configured Java executable was not found:\n{candidate}")
             return candidate
 
         executable = "java.exe" if SYSTEM_OS == "windows" else "java"
-        managed = self.root / "java" / str(major)
-        managed_candidates = list(managed.glob(f"**/bin/{executable}"))
+        managed = self.root.resolve() / "java" / str(major)
+        managed_candidates = [
+            path for path in managed.glob(f"**/bin/{executable}") if path.is_file()
+        ]
         if managed_candidates:
             return managed_candidates[0]
 
@@ -520,20 +523,26 @@ class Installer:
 
     @staticmethod
     def _matching_system_java(executable: str, major: int) -> pathlib.Path | None:
+        environment = system_process_environment()
+        resolved = shutil.which(executable, path=environment.get("PATH", os.defpath))
+        if not resolved:
+            return None
+        candidate = pathlib.Path(resolved).resolve()
         creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if SYSTEM_OS == "windows" else 0
         try:
             output = subprocess.check_output(
-                [executable, "-version"],
+                [str(candidate), "-version"],
                 stderr=subprocess.STDOUT,
                 text=True,
-                env=system_process_environment(),
+                env=environment,
                 creationflags=creation_flags,
+                timeout=15,
             )
         except (OSError, subprocess.SubprocessError):
             return None
         match = re.search(r'version "(?:1\.)?(\d+)', output)
         if match and int(match.group(1)) == major:
-            return pathlib.Path(executable)
+            return candidate
         return None
 
     @staticmethod
@@ -630,12 +639,121 @@ def launch_log_indicates_clean_shutdown(instance: str | pathlib.Path) -> bool:
     )
 
 
-def launch(instance: str | pathlib.Path, account: dict[str, Any]) -> subprocess.Popen[Any]:
+def relocate_launch_record(record: dict[str, Any], instance: pathlib.Path) -> dict[str, Any]:
+    """Rebase launcher-owned paths after moving or renaming the data folder.
+
+    The old root comes from the known minecraft-data/assets layout, rather than
+    guessing from a custom Java executable. Only launch path fields are changed.
+    """
+    assets = pathlib.Path(record["assets"])
+    if (
+        not assets.is_absolute()
+        or assets.name != "assets"
+        or assets.parent.name != "minecraft-data"
+    ):
+        return dict(record)
+    old_root = assets.parent.parent
+    current_root = instance.resolve().parent.parent
+    if old_root == current_root:
+        return dict(record)
+
+    old_prefixes = {str(old_root), old_root.as_posix()}
+    prefix = re.compile(
+        r"""(?<![^\s="';:])(?:"""
+        + "|".join(re.escape(value) for value in sorted(old_prefixes))
+        + r")(?=[/\\])",
+        re.IGNORECASE if SYSTEM_OS == "windows" else 0,
+    )
+
+    def relocate_path(value):
+        try:
+            relative = pathlib.Path(value).relative_to(old_root)
+        except ValueError:
+            return value
+        return str(current_root / relative)
+
+    def relocate(value):
+        if isinstance(value, str):
+            return prefix.sub(lambda _match: str(current_root), value)
+        if isinstance(value, list):
+            return [relocate(item) for item in value]
+        if isinstance(value, dict):
+            return {key: relocate(item) for key, item in value.items()}
+        return value
+
+    updated = dict(record)
+    for field in ("java", "assets", "natives", "client"):
+        if field in updated:
+            updated[field] = relocate_path(updated[field])
+    if "classpath" in updated:
+        updated["classpath"] = [relocate_path(value) for value in updated["classpath"]]
+    for field in ("arguments", "legacyArguments"):
+        if field in updated:
+            updated[field] = relocate(updated[field])
+    return updated
+
+
+def validate_launch_files(record: dict[str, Any]) -> None:
+    """Identify missing installation files before asking the OS to start Java."""
+    files = [pathlib.Path(record["client"])]
+    files.extend(pathlib.Path(path) for path in record["classpath"])
+    files.append(pathlib.Path(record["assets"]) / "indexes" / f"{record['assetIndex']}.json")
+    missing = [str(path) for path in dict.fromkeys(files) if not path.is_file()]
+    if not pathlib.Path(record["natives"]).is_dir():
+        missing.append(str(record["natives"]))
+    if missing:
+        details = "\n".join(missing[:5])
+        if len(missing) > 5:
+            details += f"\n... and {len(missing) - 5} more."
+        raise RuntimeError(f"Minecraft installation files are missing:\n{details}")
+
+
+def launch(
+    instance: str | pathlib.Path,
+    account: dict[str, Any],
+    *,
+    java_override: str | None = None,
+    progress: ProgressCallback | None = None,
+) -> subprocess.Popen[Any]:
     """Start Minecraft for an installed instance and return its process handle."""
-    instance_root = pathlib.Path(instance)
-    launch_record = json.loads((instance_root / "instance-launch.json").read_text(encoding="utf-8"))
+    instance_root = pathlib.Path(instance).resolve()
+    record_path = instance_root / "instance-launch.json"
+    try:
+        original_record = json.loads(record_path.read_text(encoding="utf-8"))
+    except FileNotFoundError as error:
+        raise RuntimeError(f"The instance launch profile is missing:\n{record_path}") from error
+    except (json.JSONDecodeError, UnicodeDecodeError) as error:
+        raise RuntimeError(f"The instance launch profile is damaged:\n{record_path}") from error
+    launch_record = relocate_launch_record(original_record, instance_root)
+    validate_launch_files(launch_record)
     game_directory = instance_root / "minecraft"
     game_directory.mkdir(exist_ok=True)
+
+    # Resolve Java from the current data root and settings on every GUI launch.
+    # A removed system runtime can then fall back to a managed download in Auto.
+    if java_override is not None:
+        launch_record["java"] = str(
+            Installer(instance_root.parent.parent, progress, java_override).java(
+                int(launch_record["javaMajor"])
+            )
+        )
+    configured_java = pathlib.Path(launch_record["java"]).expanduser()
+    if configured_java.is_absolute() or configured_java.parent != pathlib.Path("."):
+        java = str(configured_java.resolve()) if configured_java.is_file() else None
+    else:
+        java = shutil.which(
+            launch_record["java"], path=system_process_environment().get("PATH", os.defpath)
+        )
+    if not java or not pathlib.Path(java).is_file():
+        raise RuntimeError(f"The selected Java executable was not found:\n{launch_record['java']}")
+    launch_record["java"] = str(pathlib.Path(java).resolve())
+    if launch_record != original_record:
+        temporary = record_path.with_suffix(".json.tmp")
+        try:
+            temporary.write_text(json.dumps(launch_record, indent=2), encoding="utf-8")
+            temporary.replace(record_path)
+        finally:
+            temporary.unlink(missing_ok=True)
 
     substitutions = {
         "${auth_player_name}": account["name"],
@@ -711,5 +829,12 @@ def launch(instance: str | pathlib.Path, account: dict[str, Any]) -> subprocess.
             env=process_environment,
             creationflags=creation_flags,
         )
+    except OSError as error:
+        # Windows often omits the filename in WinError 2. Never include the full
+        # command here: Minecraft arguments contain the account access token.
+        raise RuntimeError(
+            "Minecraft could not start its Java process.\n"
+            f"Java: {launch_record['java']}\nWorking folder: {game_directory}\n{error}"
+        ) from error
     finally:
         log_handle.close()

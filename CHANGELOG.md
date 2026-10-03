@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.9.23 Alpha (Windows and Linux)
+
+- Fixed existing launch profiles retaining old absolute paths after the launcher
+  data folder moves, including the Zazu Launcher to BreakBlocks Launcher migration.
+  Java, library, asset and native paths are rebased to the current data folder.
+- Select Java using the current Settings value at launch. Auto can download its
+  required runtime if a previously selected system Java has been removed.
+- Store an absolute path for system Java instead of relying on a later PATH lookup.
+- Identify missing launch files before starting Minecraft. Windows process-start
+  errors now show the Java and working-folder paths, with a Repair action, while
+  keeping account access tokens out of error details.
+
 ## 0.9.22 Alpha (Windows and Linux)
 
 - Added automatic recovery snapshots before mod changes and loader changes,

@@ -8,7 +8,7 @@ A Minecraft: Java Edition launcher for the BreakBlocks community. Manage your
 accounts, instances and mods, and stay connected through the built-in
 BreakBlocks chat. Available for Windows, Ubuntu and Steam Deck.
 
-**Current version: 0.9.22 Alpha**
+**Current version: 0.9.23 Alpha**
 
 [Downloads](https://github.com/Zazuzin/BreakBlocks-Launcher/releases) ·
 [Alpha test builds](https://github.com/Zazuzin/BreakBlocks-Launcher/actions/workflows/test-build.yml) ·
@@ -80,7 +80,7 @@ The `.deb` package targets **64-bit Ubuntu 24.04**.
 2. Open a terminal in the folder containing the package and run:
 
    ```bash
-   sudo apt install ./BreakBlocks-Launcher-0.9.22-Ubuntu-amd64.deb
+   sudo apt install ./BreakBlocks-Launcher-0.9.23-Ubuntu-amd64.deb
    ```
 
 3. Open **BreakBlocks Launcher** from your applications menu, or run
@@ -139,6 +139,9 @@ A video tutorial is planned. The link will be added here when it is ready.
   from logs before sharing; do not share `launcher.json` or account tokens.
 
 Existing profiles, instances and chat sessions are preserved when updating.
+Launch paths are adjusted automatically if the launcher data folder moved.
+If Windows reports a missing file, set **Java** to **Auto** in Settings and use
+**Instance Tools → Repair installation**. **View error** shows the affected paths.
 Use **Settings → Open Launcher Folder** to find your local files.
 
 ## Credits

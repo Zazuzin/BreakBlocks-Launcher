@@ -12,8 +12,9 @@ def diagnose_text(text):
     """Recognize evidence in the actual error; do not infer a cause from exit codes."""
     text = str(text)
     lowered = text.lower()
-    if "no such file or directory" in lowered and re.search(
-        r"[/\\]java(?:\.exe)?['\"]?$", text.strip(), re.I
+    if "java executable was not found" in lowered or (
+        "no such file or directory" in lowered
+        and re.search(r"[/\\]java(?:\.exe)?['\"]?$", text.strip(), re.I)
     ):
         return _result(
             "The selected Java runtime is missing",
@@ -21,11 +22,42 @@ def diagnose_text(text):
             "Set Java to Auto in Settings, then use Repair installation to select or download its runtime.",
             "repair",
         )
-    if "instance-launch.json" in lowered and "no such file or directory" in lowered:
+    if "instance launch profile is damaged" in lowered:
+        return _result(
+            "The instance launch profile is damaged",
+            "The saved Minecraft launch profile could not be read.",
+            "Use Repair installation in Instance Tools to rebuild the launch profile.",
+            "repair",
+        )
+    if "instance launch profile is missing" in lowered or (
+        "instance-launch.json" in lowered and "no such file or directory" in lowered
+    ):
         return _result(
             "The instance launch profile is missing",
             "Minecraft's installed launch profile could not be found.",
             "Use Repair installation in Instance Tools to rebuild the launch profile.",
+            "repair",
+        )
+    if "minecraft installation files are missing" in lowered:
+        return _result(
+            "Minecraft installation files are missing",
+            "A required client, library, asset index or native-library folder could not be found.",
+            "Use View error to see the missing paths, then Repair installation in Instance Tools.",
+            "repair",
+        )
+    if "minecraft could not start its java process" in lowered:
+        return _result(
+            "Minecraft's Java process could not start",
+            "The operating system could not start Java. View error shows the runtime path and OS error.",
+            "Check the Java executable shown in View error. Set Java to Auto in Settings and try again, "
+            "or use Repair installation to rebuild the instance's launch files.",
+            "repair",
+        )
+    if "[winerror 2]" in lowered or "[winerror 3]" in lowered:
+        return _result(
+            "A launch file or folder could not be found",
+            "Windows reports a missing path, but this error does not identify which one.",
+            "Set Java to Auto in Settings, then use Repair installation in Instance Tools and retry.",
             "repair",
         )
     if "unsupportedclassversionerror" in lowered or "compiled by a more recent version" in lowered:

@@ -6651,7 +6651,14 @@ class Launcher(ctk.CTk):
                 launch_account = dict(account, memory=launch_memory)
                 launched_at = time.time()
                 started = time.monotonic()
-                process = minecraft_backend.launch(self.store.instances / ident, launch_account)
+                process = minecraft_backend.launch(
+                    self.store.instances / ident,
+                    launch_account,
+                    java_override=self.store.data["settings"].get("java", "auto"),
+                    progress=lambda _percent, label: self.post_ui(
+                        lambda label=label: self.status.set(label)
+                    ),
+                )
                 self.post_ui(
                     lambda: (
                         self.mark_instance_running(ident, started, process.pid),
