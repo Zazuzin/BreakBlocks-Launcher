@@ -1,78 +1,86 @@
-BreakBlocks Launcher 0.9.25 Alpha - synchronized source package
+BreakBlocks Launcher 0.9.26 Alpha - complete source
+
+Windows, Ubuntu and Steam Deck use the same launcher code. This package
+includes all modules, assets, fonts, tests, build scripts and licence files.
+Start with SOURCE-REVIEW.md for a map of the code.
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
 
 Requirements
 ------------
-- Python 3.10 or newer
-- Tk support for Python
+The tested build environment is Python 3.12 on 64-bit Windows or Ubuntu 24.04.
+Source requires Python 3.10 or newer and Tk support. Use the pinned versions
+in requirements.txt and requirements-dev.txt.
 
-Install and run
----------------
-  python -m pip install -r requirements.txt
-  python breakblocks_launcher_boot.pyw
+Windows
+-------
+Open PowerShell in the source directory:
+
+  py -3.12 -m venv .venv
+  .\.venv\Scripts\python.exe -m pip install -r requirements-dev.txt
+  .\.venv\Scripts\python.exe breakblocks_launcher_boot.pyw
+
+To check and build the Windows package:
+
+  .\packaging\windows\build.ps1
+
+See BUILD-WINDOWS.md for output and test-suite details.
+
+Ubuntu / Linux
+--------------
+Install Python, Tk and the system libraries listed in BUILD-LINUX.md, then:
+
+  python3 -m venv .venv
+  .venv/bin/python -m pip install -r requirements-dev.txt
+  .venv/bin/python breakblocks_launcher_boot.pyw
+
+To check and build the Ubuntu package:
+
+  bash packaging/linux/build-deb.sh
+
+BUILD-LINUX.md also describes the portable Linux / Steam Deck package.
 
 Development checks
 ------------------
-  python -m pip install -r requirements-dev.txt
+From the source directory, using the environment's Python:
+
   python -m black --check --line-length 100 *.py tests tools
   python -m ruff check *.py tests tools
 
-Then run every tests/test_*.py file with the source directory on PYTHONPATH.
-The suite is intentionally dependency-light and does not require a Minecraft
-or Microsoft account.
+On Linux, run the complete suite:
 
-Main modules
+  export PYTHONPATH="$PWD"
+  for test_file in tests/test_*.py; do .venv/bin/python "$test_file" || exit; done
+
+With xvfb and xauth installed, also run the desktop-focus regression:
+
+  xvfb-run -a .venv/bin/python tests/test_x11_chat_focus.py
+
+The Windows build script runs the seven Windows regression files. Some of
+the remaining tests exercise Linux-specific data paths or desktop behavior.
+Tests use temporary fixtures and do not require a real game or account.
+
+Existing installations
+----------------------
+The launcher migrates older account, instance and chat-session folders on
+first run. The historical folder-name constants in launcher_paths.py must
+remain available for this migration. Product labels use BreakBlocks Launcher.
+
+Distribution
 ------------
-- app_config.py: product version and release endpoints
-- breakblocks_launcher.py: state, accounts, settings, and desktop interface
-- minecraft_backend.py: instance installation and Minecraft launching
-- modrinth_client.py: Modrinth browsing, inventory, and updates
-- mod_sources.py: trusted external mod sources
-- launcher_update.py: verified launcher updates
-- chat_browser.py: persistent embedded BreakBlocks web chat
-- PRIVACY.md and TERMS.md: launcher-specific public policies
-- LICENSE: GNU General Public License version 3
-- THIRD-PARTY-NOTICES.md: bundled dependency attribution index
-- LEGAL-RELEASE-CHECKLIST.md: completed work and release blockers
+PUBLISHING.md describes version tags, draft releases, update manifests and
+unsigned Windows packages. Build output is written to dist and dist-release;
+those directories are excluded from source archives.
 
-Existing account, instance, and chat-session data moves into the BreakBlocks
-Launcher folder on first run after updating.
-
-Release process
----------------
-PUBLISHING.md documents the GitHub Actions release, unsigned Windows packages,
-update manifest, and Alpha/Stable tag formats.
-
-Crash handling
---------------
-Each instance retains its three newest launch logs. A new Minecraft crash report
-or a non-zero exit without an orderly shutdown marker opens a local crash dialog
-with controls to view or copy the report and open the crash-reports folder.
-Reports are not uploaded.
-
-Chat status
------------
-The Chat page embeds https://irc.breakblocks.com/#/connect. BreakBlocks.com
-handles authentication and chat behaviour. A dedicated local browser profile
-retains the website cookie and preferences across launcher restarts.
-
-Legal
------
-NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH MOJANG OR
-MICROSOFT. BreakBlocks Launcher is an independent community project.
-
-The original source code is licensed under the GNU General Public License
-version 3 only. See LICENSE. BreakBlocks branding, community artwork, and
-third-party marks are not covered unless their owners explicitly say otherwise.
-
-Minecraft and related assets are © Mojang AB. “Minecraft” is a trademark of
-Microsoft Corporation. Third-party names, logos, and trademarks belong to their
-respective owners.
+Licence and credits
+-------------------
+The original source is licensed under the GNU General Public License version
+3 only; see LICENSE. README.md lists project credits. THIRD-PARTY-NOTICES.md
+indexes dependency notices, and legal/ includes the font and Tk notices.
+BreakBlocks branding, community artwork and third-party trademarks retain
+their owners' terms.
 
 Project: https://github.com/Zazuzin/BreakBlocks-Launcher
-Minecraft Usage Guidelines: https://www.minecraft.net/usage-guidelines
 Launcher privacy: PRIVACY.md
 Launcher terms: TERMS.md
-Third-party notices: THIRD-PARTY-NOTICES.md

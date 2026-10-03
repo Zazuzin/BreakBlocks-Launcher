@@ -71,7 +71,7 @@ def launch_failure(instance, expected, **options):
 def test_moved_data_paths_are_rebased_and_saved_before_launch():
     with tempfile.TemporaryDirectory() as temporary:
         base = Path(temporary).resolve()
-        old_root = base / "Zazu Launcher"
+        old_root = base / "Old Launcher"
         instance, original = installed_instance(old_root)
         java = old_root / "java" / "21" / "runtime" / "bin" / "java.exe"
         java.parent.mkdir(parents=True)
@@ -285,7 +285,7 @@ def test_real_child_starts_from_moved_data_folder_with_spaces():
     # Use Python as a harmless process shim. It accepts -X options; everything
     # after -c is script argv. This checks real cwd/argv/log handling on both OSes.
     with tempfile.TemporaryDirectory() as temporary:
-        root = Path(temporary).resolve() / "Zazu Launcher"
+        root = Path(temporary).resolve() / "Old Launcher"
         instance, record = installed_instance(root)
         record["arguments"]["jvm"] = [
             "-c",

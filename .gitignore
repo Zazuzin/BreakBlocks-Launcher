@@ -4,5 +4,9 @@ __pycache__/
 .venv/
 build/
 dist/
+dist-release/
+third-party-licenses/
+BreakBlocks-Launcher-*.zip
+BreakBlocks-Launcher-*.tar.gz
+BreakBlocks-Launcher-*.deb
 *.spec.bak
-

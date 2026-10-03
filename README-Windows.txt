@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.25 Alpha - Windows x64 test build
+BreakBlocks Launcher 0.9.26 Alpha - Windows x64 test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.

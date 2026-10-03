@@ -3,7 +3,7 @@
 Reviewed: 3 October 2026
 
 This is a practical release checklist, not legal advice. It records what the
-launcher already does, what has been implemented in 0.9.13, and the few facts
+launcher already does, what the current source implements, and the few facts
 that still need confirmation before a stable public release.
 
 ## Completed in the launcher

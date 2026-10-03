@@ -39,17 +39,9 @@ jobs:
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
           "CHANNEL=$channel" | Out-File -FilePath $env:GITHUB_ENV -Append
           "ASSET_SUFFIX=$suffix" | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Check formatting and tests
+      - name: Check and build Windows package
         shell: pwsh
-        run: |
-          python -m black --check --line-length 100 *.py tests tools
-          python -m ruff check *.py tests tools
-          $env:PYTHONPATH = (Get-Location).Path
-          Get-ChildItem tests/test_*.py | ForEach-Object { python $_.FullName; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
-      - name: Collect third-party licences
-        run: python tools/collect_dependency_licenses.py --output third-party-licenses
-      - name: Build Windows package
-        run: python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
+        run: .\packaging\windows\build.ps1 -PythonExecutable (Get-Command python).Source
       - name: Verify unsigned Windows executable
         shell: pwsh
         run: |
@@ -64,9 +56,6 @@ jobs:
       - name: Package Windows release
         shell: pwsh
         run: |
-          Copy-Item "README-Windows.txt" "dist\BreakBlocks Launcher\README.txt"
-          Copy-Item "LICENSE", "PRIVACY.md", "TERMS.md", "THIRD-PARTY-NOTICES.md" "dist\BreakBlocks Launcher"
-          Copy-Item "third-party-licenses" "dist\BreakBlocks Launcher\third-party-licenses" -Recurse
           Rename-Item "dist\BreakBlocks Launcher" "BreakBlocks-Launcher"
           $archive = "BreakBlocks-Launcher-$env:VERSION-Windows-x86_64.zip"
           Compress-Archive -Path "dist\BreakBlocks-Launcher" -DestinationPath $archive -CompressionLevel Optimal

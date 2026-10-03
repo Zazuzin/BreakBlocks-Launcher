@@ -1,36 +1,33 @@
-# Final source sweep
+# Source review notes
 
-Reviewed: 28 September 2026
+Reviewed: 4 October 2026. Source version: **0.9.26 Alpha**.
 
-This is a historical review of the 0.9.6 Alpha source snapshot. Current
-versions also include a Windows game-chat overlay and have renamed the launcher
-modules and GitHub repository. See CHANGELOG.md for later changes.
+## Source contents
 
-## Checks completed
+- Product labels, package names and repository links use BreakBlocks Launcher.
+- Historical data-directory names are confined to the compatibility table in
+  `launcher_paths.py`. Existing accounts, instances, chat sessions and cached
+  profile pictures continue to migrate from older installations.
+- Source archives contain tracked project files only. They exclude account data,
+  browser profiles, installed games, logs, Python caches, virtual environments,
+  Git history and build output.
+- The public Microsoft application identifier remains in the source because it
+  is required by the desktop device-code sign-in flow. No client secret is used.
+- GPL terms, project credits and dependency/font notices are retained.
 
-- All 101 automated regression checks pass.
-- Every Python file compiles under Python 3.12.
-- No private keys, passwords, client secrets, access tokens, build output, user
-  data, logs, or Python cache files are included.
-- Product wording in that snapshot used **BreakBlocks Launcher**. Later builds
-  renamed the internal launcher modules and repository.
-- The Microsoft OAuth client ID is a public application identifier, not a
-  secret. No client secret is used by the desktop device-code flow.
-- Linux source retains the tested system-Tk, permission, Microsoft sign-in,
-  font, and desktop-icon fixes.
-- Chat opens only the fixed `https://irc.breakblocks.com/#/connect` page in an
-  embedded Chromium surface. Its isolated local browser profile persists the
-  website session across launcher restarts, while authentication, channels,
-  moderation, and chat behaviour remain controlled by BreakBlocks.com.
-- Obsolete launcher-managed IRC passwords and preferences are removed during
-  settings migration. The launcher does not read or store BreakBlocks login
-  credentials itself.
-- Source and packaging include GPL-3.0-only terms and the bundled third-party
-  licence notices, including the Inter font licence.
+## Build and test paths
 
-## Publication blockers
+- The Windows build script checks formatting, runs the Windows regression suite,
+  collects dependency licences and packages the launcher. The test and release
+  workflows call this same script.
+- The Linux build runs all test files. The X11 focus check additionally runs
+  under Xvfb in the test workflow.
+- Ubuntu uses system Python and Tk with bundled application dependencies. The
+  portable Linux / Steam Deck build uses PyInstaller and includes the fonts.
+- The source-review entry points are listed in `SOURCE-REVIEW.md`.
 
-The unresolved operator, contact, jurisdiction, web-chat policy, and Windows
-signing items remain listed in `LEGAL-RELEASE-CHECKLIST.md`. They do not stop
-private testing or code review, but they should be resolved before a stable
-public release.
+## Remaining release decisions
+
+Operator/contact details and website-policy confirmations are recorded in
+`LEGAL-RELEASE-CHECKLIST.md` and `WEBSITE-LEGAL-CHANGES.md`. These source archives
+are for review and do not create or publish a stable release.

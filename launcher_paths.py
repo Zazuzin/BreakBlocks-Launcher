@@ -10,6 +10,9 @@ import tempfile
 
 from app_config import APP_NAME
 
+# Historical folder names are needed to find data from older installations.
+LEGACY_DATA_FOLDERS = {"nt": "Zazu Launcher", "posix": "zazu-launcher"}
+
 
 def migrate_account_skin(root: pathlib.Path, account: dict) -> bool:
     """Reconnect a profile to its moved local skin cache without touching sign-in data."""
@@ -82,13 +85,13 @@ def launcher_data_root(*, state: bool = False) -> pathlib.Path:
     if os.name == "nt":
         base = pathlib.Path(os.environ.get("LOCALAPPDATA", pathlib.Path.home() / "AppData/Local"))
         preferred = base / APP_NAME
-        legacy = base / "Zazu Launcher"
+        legacy = base / LEGACY_DATA_FOLDERS["nt"]
     else:
         environment = "XDG_STATE_HOME" if state else "XDG_DATA_HOME"
         default = pathlib.Path.home() / (".local/state" if state else ".local/share")
         base = pathlib.Path(os.environ.get(environment, default))
         preferred = base / "breakblocks-launcher"
-        legacy = base / "zazu-launcher"
+        legacy = base / LEGACY_DATA_FOLDERS["posix"]
 
     migrate_legacy_data(preferred, legacy)
 

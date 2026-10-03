@@ -11,11 +11,12 @@ from PIL import Image
 import breakblocks_launcher
 import display_environment
 import mod_sources
+from launcher_paths import LEGACY_DATA_FOLDERS
 
 
 def test_block_icon_catalogue():
     assert breakblocks_launcher.APP_NAME == "BreakBlocks Launcher"
-    assert breakblocks_launcher.APP_VERSION == "0.9.25 Alpha"
+    assert breakblocks_launcher.APP_VERSION == "0.9.26 Alpha"
     assert len(breakblocks_launcher.BLOCK_ICONS) == 25
     assert len(breakblocks_launcher.BLOCK_ICON_KEYS) == 25
     asset_root = Path(breakblocks_launcher.__file__).resolve().parent / "assets" / "instance_icons"
@@ -33,7 +34,7 @@ def test_existing_instances_receive_stable_icons():
         old_xdg = os.environ.get("XDG_DATA_HOME")
         os.environ["XDG_DATA_HOME"] = temporary
         try:
-            root = Path(temporary) / "zazu-launcher"
+            root = Path(temporary) / LEGACY_DATA_FOLDERS["posix"]
             root.mkdir(parents=True)
             (root / "launcher.json").write_text(
                 json.dumps(

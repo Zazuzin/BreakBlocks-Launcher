@@ -25,33 +25,10 @@ jobs:
         run: |
           $version = python -c "from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)"
           "VERSION=$version" | Out-File -FilePath $env:GITHUB_ENV -Append
-      - name: Format and run Windows-safe tests
+      - name: Check and build unsigned Windows test package
         shell: pwsh
         run: |
-          python -m black --line-length 100 *.py tests tools
-          python -m ruff check --fix *.py tests tools
-          $env:PYTHONPATH = (Get-Location).Path
-          python -m compileall -q .
-          @(
-            "tests/test_chat_browser.py",
-            "tests/test_windows_chat_overlay.py",
-            "tests/test_instance_archives.py",
-            "tests/test_instance_recovery_flow.py",
-            "tests/test_launch_diagnostics.py",
-            "tests/test_launcher_paths.py",
-            "tests/test_minecraft_launch.py"
-          ) | ForEach-Object {
-            python $_
-            if ($LASTEXITCODE) { exit $LASTEXITCODE }
-          }
-      - name: Build unsigned Windows test package
-        shell: pwsh
-        run: |
-          python tools/collect_dependency_licenses.py --output third-party-licenses
-          python -m PyInstaller --noconfirm --clean BreakBlocksLauncher.spec
-          Copy-Item "README-Windows.txt" "dist\BreakBlocks Launcher\README.txt"
-          Copy-Item "LICENSE", "PRIVACY.md", "TERMS.md", "THIRD-PARTY-NOTICES.md" "dist\BreakBlocks Launcher"
-          Copy-Item "third-party-licenses" "dist\BreakBlocks Launcher\third-party-licenses" -Recurse
+          .\packaging\windows\build.ps1 -PythonExecutable (Get-Command python).Source
           Rename-Item "dist\BreakBlocks Launcher" "BreakBlocks-Launcher"
           if (-not (Test-Path -LiteralPath "dist\BreakBlocks-Launcher\BreakBlocks Launcher.exe")) {
             throw "The Windows executable is missing from the build."

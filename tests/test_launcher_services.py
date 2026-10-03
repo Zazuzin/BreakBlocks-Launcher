@@ -398,7 +398,9 @@ def test_legal_documents_cover_current_data_flows_and_are_packaged():
     assert "Legal operator/data controller" in checklist
     assert "Privacy Policy — add" in website_changes
     assert "collect_dependency_licenses.py" in workflow
-    assert 'Copy-Item "LICENSE", "PRIVACY.md", "TERMS.md"' in workflow
+    windows_build = (root / "packaging" / "windows" / "build.ps1").read_text(encoding="utf-8")
+    assert "packaging\\windows\\build.ps1 -PythonExecutable" in workflow
+    assert "Copy-Item LICENSE, PRIVACY.md, TERMS.md, THIRD-PARTY-NOTICES.md" in windows_build
     assert "cp LICENSE PRIVACY.md TERMS.md THIRD-PARTY-NOTICES.md" in workflow
     assert 'cp -R fonts "dist/BreakBlocks Launcher/fonts"' in workflow
     for document in ("LICENSE", "PRIVACY.md", "TERMS.md", "THIRD-PARTY-NOTICES.md"):

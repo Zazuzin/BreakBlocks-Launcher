@@ -1,7 +1,14 @@
+param(
+    [string]$PythonExecutable
+)
+
 $ErrorActionPreference = "Stop"
 
 $ProjectRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..")).Path
-$Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+$Python = $PythonExecutable
+if (-not $Python) {
+    $Python = Join-Path $ProjectRoot ".venv\Scripts\python.exe"
+}
 if (-not (Test-Path -LiteralPath $Python)) {
     throw "Create .venv with Python 3.12 and install requirements-dev.txt first."
 }
@@ -12,8 +19,16 @@ if ($LASTEXITCODE) { exit $LASTEXITCODE }
 & $Python -m ruff check *.py tests tools
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 $env:PYTHONPATH = $ProjectRoot
-Get-ChildItem tests/test_*.py | ForEach-Object {
-    & $Python $_.FullName
+@(
+    "tests/test_chat_browser.py",
+    "tests/test_windows_chat_overlay.py",
+    "tests/test_instance_archives.py",
+    "tests/test_instance_recovery_flow.py",
+    "tests/test_launch_diagnostics.py",
+    "tests/test_launcher_paths.py",
+    "tests/test_minecraft_launch.py"
+) | ForEach-Object {
+    & $Python $_
     if ($LASTEXITCODE) { exit $LASTEXITCODE }
 }
 

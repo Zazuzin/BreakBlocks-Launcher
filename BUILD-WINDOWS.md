@@ -13,6 +13,21 @@ py -3.12 -m venv .venv
 The finished ZIP is written to `dist-release`. Windows builds are unsigned and
 may trigger browser or Windows warnings; see `PUBLISHING.md`.
 
-The build script runs the formatter check, static checks, and every regression
-test before packaging. It also includes the GPL licence, launcher policies, and
-third-party licence files.
+To run the launcher from source before packaging:
+
+```powershell
+.\.venv\Scripts\python.exe breakblocks_launcher_boot.pyw
+```
+
+The build script checks formatting and runs the seven Windows regression test
+files before packaging. GitHub Actions calls this same script, using its Python
+installation through the optional `-PythonExecutable` argument. The tests cover
+chat, the Windows overlay, backups and transfers, recovery actions, diagnostics,
+data migration and Minecraft launching.
+
+The remaining test files use Linux data paths or Linux desktop behavior. Run
+the complete suite on Linux as described in `README-SOURCE.txt`.
+
+The package includes the GPL licence, launcher policies and third-party licence
+files. The ZIP contains the application folder and everything needed to run it;
+Python does not need to be installed on the user's computer.

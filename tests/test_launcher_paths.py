@@ -1,15 +1,42 @@
 """Check that existing accounts survive the launcher data-directory rename."""
 
+import os
 import tempfile
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
+import launcher_paths
 from launcher_paths import migrate_account_skin, migrate_legacy_data
+
+
+def test_data_root_finds_historical_folders_on_both_platforms():
+    for platform, state, environment in (
+        ("nt", False, "LOCALAPPDATA"),
+        ("nt", True, "LOCALAPPDATA"),
+        ("posix", False, "XDG_DATA_HOME"),
+        ("posix", True, "XDG_STATE_HOME"),
+    ):
+        with tempfile.TemporaryDirectory() as temporary:
+            base = Path(temporary)
+            legacy = base / launcher_paths.LEGACY_DATA_FOLDERS[platform]
+            legacy.mkdir()
+            (legacy / "launcher.json").write_text('{"accounts": ["existing"]}')
+            platform_os = SimpleNamespace(
+                name=platform, environ={environment: temporary}, chmod=os.chmod
+            )
+            with patch.object(launcher_paths, "os", platform_os):
+                current = launcher_paths.launcher_data_root(state=state)
+            expected = "BreakBlocks Launcher" if platform == "nt" else "breakblocks-launcher"
+            assert current == base / expected
+            assert (current / "launcher.json").read_text() == '{"accounts": ["existing"]}'
+            assert not legacy.exists()
 
 
 def test_existing_profiles_and_chat_session_move_to_breakblocks_folder():
     with tempfile.TemporaryDirectory() as temporary:
         base = Path(temporary)
-        legacy = base / "Zazu Launcher"
+        legacy = base / "Old Launcher"
         preferred = base / "BreakBlocks Launcher"
         (legacy / "instances" / "world").mkdir(parents=True)
         (legacy / "web-chat-profile").mkdir()
@@ -28,7 +55,7 @@ def test_existing_profiles_and_chat_session_move_to_breakblocks_folder():
 def test_existing_log_folder_does_not_hide_older_accounts():
     with tempfile.TemporaryDirectory() as temporary:
         base = Path(temporary)
-        legacy = base / "zazu-launcher"
+        legacy = base / "old-launcher"
         preferred = base / "breakblocks-launcher"
         legacy.mkdir()
         preferred.mkdir()
@@ -50,7 +77,7 @@ def test_existing_log_folder_does_not_hide_older_accounts():
 def test_existing_breakblocks_profile_is_not_overwritten():
     with tempfile.TemporaryDirectory() as temporary:
         base = Path(temporary)
-        legacy = base / "zazu-launcher"
+        legacy = base / "old-launcher"
         preferred = base / "breakblocks-launcher"
         legacy.mkdir()
         preferred.mkdir()
@@ -66,7 +93,7 @@ def test_existing_breakblocks_profile_is_not_overwritten():
 def test_moved_skin_cache_restores_profile_picture_without_changing_credentials():
     with tempfile.TemporaryDirectory() as temporary:
         base = Path(temporary).resolve()
-        legacy = base / "Zazu Launcher"
+        legacy = base / "Old Launcher"
         current = base / "BreakBlocks Launcher"
         skin = legacy / "skins" / "player-id.png"
         skin.parent.mkdir(parents=True)
@@ -95,7 +122,7 @@ def test_already_migrated_and_missing_skin_paths_use_the_matching_local_cache():
         skin = root / "skins" / "player-id.png"
         skin.parent.mkdir()
         skin.write_bytes(b"cached skin")
-        for saved in (r"C:\Users\Player\AppData\Local\Zazu Launcher\skins\player-id.png", ""):
+        for saved in (r"C:\Users\Player\AppData\Local\Old Launcher\skins\player-id.png", ""):
             account = {"id": "player-id", "skin": saved}
             assert migrate_account_skin(root, account)
             assert account["skin"] == str(skin)

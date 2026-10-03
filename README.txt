@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.25 Alpha - Linux/Steam Deck test build
+BreakBlocks Launcher 0.9.26 Alpha - Linux/Steam Deck test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -48,7 +48,7 @@ Chat and launcher features
 
 Important release note
 ----------------------
-Update checks activate after 0.9.25 is published as a GitHub Release with
+Update checks activate after 0.9.26 is published as a GitHub Release with
 breakblocks-update.json and the matching platform packages. The launcher
 verifies the package before installation. Ubuntu asks for the normal
 administrator approval; portable Steam Deck builds replace themselves and

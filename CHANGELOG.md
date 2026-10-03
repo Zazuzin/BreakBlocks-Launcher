@@ -1,5 +1,14 @@
 # Changelog
 
+## 0.9.26 Alpha (Windows and Linux)
+
+- Removed old product names from documentation and general test fixtures. The
+  historical data-folder names are kept in one compatibility table so existing
+  accounts, instances and chat sessions still migrate correctly.
+- Unified the Windows build script and CI packaging steps, using the Windows
+  regression suite. Source build instructions now match those commands.
+- Added a source-review guide and updated the source-package documentation.
+
 ## 0.9.25 Alpha (Windows and Linux)
 
 - Replaced the Instance Tools button and chooser with a right-click menu on each
@@ -19,7 +28,7 @@
 ## 0.9.23 Alpha (Windows and Linux)
 
 - Fixed existing launch profiles retaining old absolute paths after the launcher
-  data folder moves, including the Zazu Launcher to BreakBlocks Launcher migration.
+  data folder moves, including migrations from earlier installations.
   Java, library, asset and native paths are rebased to the current data folder.
 - Select Java using the current Settings value at launch. Auto can download its
   required runtime if a previously selected system Java has been removed.
