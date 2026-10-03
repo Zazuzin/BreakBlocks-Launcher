@@ -5,7 +5,7 @@ packaging scripts, and updater all report the same version.
 """
 
 APP_NAME = "BreakBlocks Launcher"
-APP_VERSION_NUMBER = "0.9.21"
+APP_VERSION_NUMBER = "0.9.22"
 APP_RELEASE_STAGE = "Alpha"
 APP_VERSION = f"{APP_VERSION_NUMBER} {APP_RELEASE_STAGE}"
 APP_USER_AGENT = f"BreakBlocks-Launcher/{APP_VERSION_NUMBER}"

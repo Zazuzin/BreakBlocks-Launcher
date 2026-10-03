@@ -40,6 +40,8 @@ from customtkinter.windows.widgets.core_rendering import DrawEngine
 from PIL import Image, ImageDraw, ImageTk
 
 import chat_browser
+import instance_archives
+import launch_diagnostics
 import launcher_update
 import minecraft_backend
 import modrinth_client
@@ -999,7 +1001,7 @@ class LauncherDashboardCanvas(tk.Canvas):
 
         action_labels = (
             ("Modrinth", launcher.open_modrinth_manager, selected, SURFACE_ALT, SURFACE_HOVER),
-            ("Mods Folder", launcher.open_mods_folder, selected, SURFACE_ALT, SURFACE_HOVER),
+            ("Instance Tools", launcher.instance_tools, selected, SURFACE_ALT, SURFACE_HOVER),
             (
                 "Edit Instance",
                 launcher.edit_instance,
@@ -1088,7 +1090,7 @@ class LauncherDashboardCanvas(tk.Canvas):
         self.create_text(
             x1 + 18,
             y1 + 47,
-            text="Your installed Minecraft environments",
+            text="Your Minecraft environments",
             fill=MUTED,
             font=self._font(10),
             anchor="w",
@@ -1104,6 +1106,17 @@ class LauncherDashboardCanvas(tk.Canvas):
             "＋  Create instance",
             launcher.create_instance,
             font_size=10,
+        )
+        self._button(
+            x2 - 101,
+            y1 + 43,
+            x2 - 14,
+            y1 + 64,
+            "Import",
+            launcher.import_instance_archive,
+            fill=SURFACE_ALT,
+            hover=SURFACE_HOVER,
+            font_size=9,
         )
         list_x1, list_x2 = x1 + 10, x2 - 10
         list_y1, list_y2 = y1 + 66, y2 - 10
@@ -2170,6 +2183,7 @@ class Launcher(ctk.CTk):
         self.selected_instance_id = None
         self.selected_account_id = None
         self.active_installs = set()
+        self.instance_tasks = set()
         self.nav_buttons = {}
         self.pages = {}
         self.current_page = None
@@ -2325,6 +2339,12 @@ class Launcher(ctk.CTk):
 
     def close_launcher(self):
         """Close the window while launch watchers finish tracking game time."""
+        if self.instance_tasks:
+            self.show_notice(
+                "Instance task in progress",
+                "Wait for the backup or instance transfer to finish before closing the launcher.",
+            )
+            return
         self.closing = True
         self.stop_chat_browser()
         self.chat_game_file.unlink(missing_ok=True)
@@ -2448,7 +2468,8 @@ class Launcher(ctk.CTk):
             else "Minecraft did not create a crash report, so the latest launch log will be used."
         )
 
-        window, body = self.make_dialog("Minecraft crashed", 660, 340)
+        diagnosis = launch_diagnostics.diagnose_launch(instance_root, crash_report=report_path)
+        window, body = self.make_dialog("Minecraft crashed", 720, 570)
         ctk.CTkLabel(
             body,
             text="!",
@@ -2474,6 +2495,8 @@ class Launcher(ctk.CTk):
             justify="center",
         ).pack(padx=30, pady=(8, 18))
 
+        self.diagnostic_card(body, diagnosis)
+
         actions = ctk.CTkFrame(body, fg_color="transparent")
         actions.pack()
         button_options = {
@@ -2491,6 +2514,7 @@ class Launcher(ctk.CTk):
             state="normal" if evidence_path.is_file() else "disabled",
             **button_options,
         ).pack(side="left", padx=4)
+        self.diagnostic_actions(body, instance, diagnosis, window)
         ctk.CTkButton(
             actions,
             text="Open crash folder",
@@ -2575,7 +2599,108 @@ class Launcher(ctk.CTk):
     def cancel_instance_launch(self, ident, detail):
         self.launching_instances.discard(ident)
         self.refresh_instances()
-        self.show_notice("Launch failed", detail, danger=True)
+        instance = next(
+            (item for item in self.store.data["instances"] if item["id"] == ident), None
+        )
+        if not instance:
+            self.show_notice("Launch failed", detail, danger=True)
+            return
+        # Pre-launch failures have not written a fresh log; do not diagnose a previous session.
+        diagnosis = launch_diagnostics.diagnose_text(detail)
+        diagnosis["next_step"] = diagnosis["next_step"].replace("View report", "View error")
+        window, body = self.make_dialog("Launch failed", 720, 540)
+        ctk.CTkLabel(body, text="Launch failed", font=self.font_heading, text_color=TEXT).pack(
+            pady=(24, 8)
+        )
+        ctk.CTkLabel(
+            body,
+            text=str(detail)[:350],
+            font=self.font_small,
+            text_color=MUTED,
+            wraplength=630,
+            justify="left",
+        ).pack(padx=24, pady=(0, 12))
+        self.diagnostic_card(body, diagnosis)
+        self.diagnostic_actions(body, instance, diagnosis, window)
+        ctk.CTkButton(
+            body,
+            text="View error",
+            command=lambda: self.show_launch_error_detail(detail),
+            height=36,
+            fg_color=CONTROL_SURFACE,
+            hover_color=SURFACE_HOVER,
+            font=self.font_small,
+        ).pack(pady=(10, 0))
+        ctk.CTkButton(
+            body,
+            text="Close",
+            command=window.destroy,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            font=self.font_button,
+        ).pack(pady=18)
+
+    def diagnostic_card(self, parent, diagnosis):
+        card = ctk.CTkFrame(parent, fg_color=DARK_SURFACE, corner_radius=10)
+        card.pack(fill="x", padx=24, pady=(0, 12))
+        ctk.CTkLabel(
+            card, text=diagnosis["title"], text_color=TEXT, font=self.font_heading, anchor="w"
+        ).pack(fill="x", padx=16, pady=(12, 4))
+        ctk.CTkLabel(
+            card,
+            text=diagnosis["explanation"] + "\n\n" + diagnosis["next_step"],
+            text_color=MUTED,
+            font=self.font_small,
+            justify="left",
+            anchor="w",
+            wraplength=605,
+        ).pack(fill="x", padx=16, pady=(0, 14))
+
+    def show_launch_error_detail(self, detail):
+        window, body = self.make_dialog("Launch error details", 800, 540)
+        ctk.CTkLabel(
+            body, text="Launch error details", text_color=TEXT, font=self.font_heading
+        ).pack(anchor="w", padx=22, pady=(20, 10))
+        viewer = ctk.CTkTextbox(body, fg_color=DARK_SURFACE, text_color=TEXT, font=self.font_small)
+        viewer.pack(fill="both", expand=True, padx=22, pady=(0, 12))
+        viewer.insert("1.0", str(detail))
+        viewer.configure(state="disabled")
+        ctk.CTkButton(
+            body,
+            text="Close",
+            command=window.destroy,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            font=self.font_button,
+        ).pack(pady=(0, 18))
+
+    def diagnostic_actions(self, parent, instance, diagnosis, window):
+        actions = ctk.CTkFrame(parent, fg_color="transparent")
+        actions.pack(pady=(4, 0))
+
+        def invoke(callback):
+            window.destroy()
+            self.selected_instance_id = instance["id"]
+            callback()
+
+        buttons = [("Backups / Restore", lambda: self.instance_backups(instance))]
+        if diagnosis.get("action") == "mods":
+            buttons.append(("Open Modrinth", self.open_modrinth_manager))
+        elif diagnosis.get("action") == "edit":
+            buttons.append(("Edit Instance", self.edit_instance))
+        elif diagnosis.get("action") == "repair":
+            buttons.append(("Repair installation", lambda: self.repair_instance(instance)))
+        for label, callback in buttons:
+            ctk.CTkButton(
+                actions,
+                text=label,
+                command=lambda fn=callback: invoke(fn),
+                width=175,
+                height=36,
+                fg_color=CONTROL_SURFACE,
+                hover_color=SURFACE_HOVER,
+                font=self.font_small,
+            ).pack(side="left", padx=5)
 
     def build(self):
         self.grid_columnconfigure(1, weight=1)
@@ -3798,6 +3923,461 @@ class Launcher(ctk.CTk):
             raise ValueError("The selected instance has an invalid folder path")
         return instance_root / "launcher-icon.png"
 
+    def instance_is_busy(self, instance):
+        ident = instance["id"]
+        installs = getattr(self, "active_installs", set())
+        return bool(
+            ident in getattr(self, "running_instances", {})
+            or ident in getattr(self, "launching_instances", set())
+            or ident in installs
+            or "modrinth:" + ident in installs
+        )
+
+    def idle_instance(self, instance=None):
+        if instance is None:
+            instance = next(
+                (
+                    item
+                    for item in self.store.data["instances"]
+                    if item["id"] == self.selected_instance_id
+                ),
+                None,
+            )
+        if not instance:
+            self.show_notice("Select an instance", "Choose a Minecraft instance first.")
+            return None
+        if self.instance_is_busy(instance):
+            self.show_notice(
+                "Instance is busy",
+                "Close Minecraft and wait for this instance's current task to finish.",
+            )
+            return None
+        return instance
+
+    def instance_tools(self):
+        instance = next(
+            (
+                item
+                for item in self.store.data["instances"]
+                if item["id"] == self.selected_instance_id
+            ),
+            None,
+        )
+        if not instance:
+            self.show_notice("Select an instance", "Choose a Minecraft instance first.")
+            return
+        window, body = self.make_dialog("Instance Tools", 610, 580)
+        ctk.CTkLabel(body, text="Instance Tools", text_color=TEXT, font=self.font_title).pack(
+            anchor="w", padx=26, pady=(22, 4)
+        )
+        ctk.CTkLabel(body, text=instance["name"], text_color=MUTED, font=self.font_body).pack(
+            anchor="w", padx=26, pady=(0, 14)
+        )
+
+        def invoke(callback):
+            window.destroy()
+            callback()
+
+        choices = (
+            (
+                "Backups / Restore",
+                "Keep the last five mod, config and launch-profile snapshots.",
+                lambda: self.instance_backups(instance),
+            ),
+            (
+                "Duplicate instance",
+                "Create a separate copy for testing.",
+                lambda: self.instance_transfer_dialog(instance, "duplicate"),
+            ),
+            (
+                "Export instance",
+                "Save a ZIP to move to another computer or platform.",
+                lambda: self.instance_transfer_dialog(instance, "export"),
+            ),
+            (
+                "Import instance",
+                "Load a BreakBlocks instance ZIP as a new instance.",
+                self.import_instance_archive,
+            ),
+            (
+                "Repair installation",
+                "Rebuild Minecraft launch files and the Java selection.",
+                lambda: self.repair_instance(instance),
+            ),
+            (
+                "Open Mods Folder",
+                "Manage this instance's mod files directly.",
+                self.open_mods_folder,
+            ),
+        )
+        for label, description, callback in choices:
+            row = ctk.CTkFrame(body, fg_color=DARK_SURFACE, corner_radius=10)
+            row.pack(fill="x", padx=26, pady=4)
+            ctk.CTkButton(
+                row,
+                text=label,
+                command=lambda fn=callback: invoke(fn),
+                width=175,
+                height=38,
+                fg_color=SURFACE_ALT,
+                hover_color=SURFACE_HOVER,
+                font=self.font_small,
+            ).pack(side="left", padx=10, pady=10)
+            ctk.CTkLabel(
+                row,
+                text=description,
+                wraplength=280,
+                justify="left",
+                anchor="w",
+                text_color=MUTED,
+                font=self.font_small,
+            ).pack(side="left", padx=(0, 10))
+        ctk.CTkButton(
+            body,
+            text="Close",
+            command=window.destroy,
+            width=105,
+            height=36,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            font=self.font_button,
+        ).pack(pady=14)
+
+    def run_instance_task(self, instance, label, operation, complete):
+        if instance is not None and not self.idle_instance(instance):
+            return
+        if self.instance_tasks:
+            self.show_notice(
+                "Instance task in progress", "Wait for the current backup or transfer to finish."
+            )
+            return
+        ident = instance["id"] if instance else "instance-transfer"
+        self.instance_tasks.add(ident)
+        self.show_install_progress(ident)
+        self.refresh_instances()
+        self.status.set(label)
+
+        def update(percent, message):
+            self.post_ui(
+                lambda value=percent, detail=message: self.launch_dashboard.set_progress(
+                    value=max(0, min(100, value)) / 100, message=detail, visible=True
+                )
+            )
+
+        def finish(result=None, error=None):
+            self.instance_tasks.discard(ident)
+            self.finish_install_progress(ident)
+            self.refresh_instances()
+            if error is not None:
+                self.status.set(label.rstrip("…") + " failed")
+                self.show_notice("Instance task failed", error, danger=True)
+            else:
+                complete(result)
+
+        def worker():
+            try:
+                result = operation(update)
+                self.post_ui(lambda payload=result: finish(payload))
+            except Exception as error:
+                log_launcher_error(label, error)
+                self.post_ui(lambda detail=str(error): finish(error=detail))
+
+        threading.Thread(target=worker, daemon=True, name="instance-transfer").start()
+
+    def instance_backups(self, instance=None):
+        instance = self.idle_instance(instance)
+        if not instance:
+            return
+        manager = instance_archives.BackupManager(self.store.root)
+        window, body = self.make_dialog("Backups / Restore", 720, 590)
+        ctk.CTkLabel(body, text="Backups / Restore", text_color=TEXT, font=self.font_title).pack(
+            anchor="w", padx=26, pady=(22, 4)
+        )
+        ctk.CTkLabel(
+            body,
+            text=(
+                instance["name"]
+                + "\nThe last five backups are kept. Restoring changes mods, configs and the launch profile; your worlds stay as they are."
+            ),
+            text_color=MUTED,
+            font=self.font_small,
+            wraplength=650,
+            justify="left",
+        ).pack(anchor="w", padx=26, pady=(0, 14))
+        rows = ctk.CTkScrollableFrame(body, fg_color=DARK_SURFACE, height=300, corner_radius=10)
+        rows.pack(fill="both", expand=True, padx=26)
+
+        def restore(path):
+            window.destroy()
+            self.confirm_action(
+                "Restore this backup?",
+                "Replace this instance's mods, configs and launch profile with the selected backup? Your current setup is backed up first. Worlds are kept.",
+                lambda: self.run_instance_task(
+                    instance,
+                    "Restoring instance…",
+                    lambda progress: manager.restore(instance, path, progress),
+                    restored,
+                ),
+                confirm_text="Restore",
+            )
+
+        def restored(metadata):
+            instance.update(metadata)
+            self.store.save()
+            # Discard the manager tied to the previous loader and mod manifest.
+            if self.mod_context and self.mod_context["instance"]["id"] == instance["id"]:
+                self.close_modrinth_manager()
+                self.mod_context = None
+            self.refresh_instances()
+            self.status.set("Restored " + instance["name"] + " — worlds kept")
+            self.instance_backups(instance)
+
+        try:
+            backups = manager.list(instance["id"])
+        except (OSError, ValueError) as error:
+            window.destroy()
+            self.show_notice("Could not read backups", str(error), danger=True)
+            return
+        if not backups:
+            ctk.CTkLabel(
+                rows,
+                text="No backups yet. Create one here, or update a mod to save one automatically.",
+                wraplength=570,
+                text_color=MUTED,
+                font=self.font_body,
+            ).pack(pady=45, padx=20)
+        for entry in backups:
+            manifest = entry["manifest"]
+            row = ctk.CTkFrame(rows, fg_color=SURFACE_ALT, corner_radius=8)
+            row.pack(fill="x", padx=4, pady=5)
+            date = time.strftime("%d %b %Y, %H:%M:%S", time.localtime(manifest["created_at"]))
+            detail = f"{date}  ·  {entry['size'] / 1024**2:.1f} MiB\n{manifest.get('reason', 'Backup')} · {manifest['instance']['loader']}"
+            ctk.CTkLabel(
+                row,
+                text=detail,
+                text_color=TEXT,
+                font=self.font_small,
+                justify="left",
+                anchor="w",
+                wraplength=450,
+            ).pack(side="left", padx=12, pady=12)
+            ctk.CTkButton(
+                row,
+                text="Restore",
+                width=95,
+                height=34,
+                fg_color=ACCENT,
+                hover_color=ACCENT_HOVER,
+                font=self.font_small,
+                command=lambda path=entry["path"]: restore(path),
+            ).pack(side="right", padx=12)
+
+        def create():
+            window.destroy()
+            self.run_instance_task(
+                instance,
+                "Creating backup…",
+                lambda progress: manager.create(instance, "Manual backup", progress),
+                lambda _path: (self.status.set("Backup saved"), self.instance_backups(instance)),
+            )
+
+        actions = ctk.CTkFrame(body, fg_color="transparent")
+        actions.pack(fill="x", padx=26, pady=18)
+        ctk.CTkButton(
+            actions,
+            text="Create backup",
+            command=create,
+            height=38,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            font=self.font_button,
+        ).pack(side="left")
+        ctk.CTkButton(
+            actions,
+            text="Open backup folder",
+            command=lambda: self.open_local_folder(manager.folder(instance["id"]), "backup folder"),
+            height=38,
+            fg_color=SURFACE_ALT,
+            hover_color=SURFACE_HOVER,
+            font=self.font_small,
+        ).pack(side="left", padx=10)
+        ctk.CTkButton(
+            actions,
+            text="Close",
+            command=window.destroy,
+            width=90,
+            height=38,
+            fg_color=SURFACE_ALT,
+            hover_color=SURFACE_HOVER,
+            font=self.font_small,
+        ).pack(side="right")
+
+    def instance_transfer_dialog(self, instance, mode):
+        instance = self.idle_instance(instance)
+        if not instance:
+            return
+        exporting = mode == "export"
+        title = "Export instance" if exporting else "Duplicate instance"
+        window, body = self.make_dialog(title, 610, 410)
+        ctk.CTkLabel(body, text=title, text_color=TEXT, font=self.font_title).pack(
+            anchor="w", padx=26, pady=(24, 5)
+        )
+        ctk.CTkLabel(
+            body,
+            text="Mods, configs, resource packs and the instance icon are included. Launcher accounts and chat sign-ins are excluded.",
+            wraplength=535,
+            justify="left",
+            text_color=MUTED,
+            font=self.font_small,
+        ).pack(anchor="w", padx=26, pady=(0, 16))
+        name = tk.StringVar(value=(instance["name"] + " copy")[:80])
+        if not exporting:
+            self.dialog_field(
+                body,
+                "NEW INSTANCE NAME",
+                ctk.CTkEntry(
+                    body,
+                    textvariable=name,
+                    height=40,
+                    font=self.font_body,
+                    fg_color=DARK_SURFACE,
+                    border_color=BORDER,
+                ),
+            )
+        personal = tk.BooleanVar(value=False)
+        ctk.CTkCheckBox(
+            body,
+            text="Include worlds and screenshots",
+            variable=personal,
+            font=self.font_body,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+        ).pack(anchor="w", padx=28, pady=(14, 8))
+        ctk.CTkLabel(
+            body,
+            text="Worlds can make the archive much larger. The new instance downloads the launch files it needs for this platform.",
+            wraplength=535,
+            justify="left",
+            text_color=MUTED,
+            font=self.font_small,
+        ).pack(anchor="w", padx=26, pady=(0, 12))
+
+        def save():
+            new_name = name.get().strip()
+            if not exporting and (not new_name or len(new_name) > 80):
+                self.show_notice(
+                    "Enter a name", "Use between 1 and 80 characters for the new instance name."
+                )
+                return
+            include = personal.get()
+            destination = None
+            if exporting:
+                safe_name = (
+                    re.sub(r"[^a-zA-Z0-9_.-]+", "-", instance["name"]).strip("-") or "instance"
+                )
+                destination = filedialog.asksaveasfilename(
+                    parent=window,
+                    title="Export BreakBlocks instance",
+                    defaultextension=".zip",
+                    initialfile=safe_name + ".zip",
+                    filetypes=[("BreakBlocks instance", "*.zip")],
+                )
+                if not destination:
+                    return
+            window.destroy()
+            if exporting:
+                self.run_instance_task(
+                    instance,
+                    "Exporting instance…",
+                    lambda progress: instance_archives.export_instance(
+                        self.store.instances, instance, destination, include, progress
+                    ),
+                    lambda path: (
+                        self.status.set("Exported " + instance["name"]),
+                        self.show_notice("Instance exported", "Saved " + str(path)),
+                    ),
+                )
+            else:
+                self.run_instance_task(
+                    instance,
+                    "Duplicating instance…",
+                    lambda progress: instance_archives.duplicate_instance(
+                        self.store.instances, instance, new_name, include, progress
+                    ),
+                    self.register_transferred_instance,
+                )
+
+        actions = ctk.CTkFrame(body, fg_color="transparent")
+        actions.pack(fill="x", padx=26, pady=14)
+        ctk.CTkButton(
+            actions,
+            text="Export" if exporting else "Duplicate",
+            command=save,
+            height=40,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            font=self.font_button,
+        ).pack(side="left")
+        ctk.CTkButton(
+            actions,
+            text="Cancel",
+            command=window.destroy,
+            width=105,
+            height=40,
+            fg_color=SURFACE_ALT,
+            hover_color=SURFACE_HOVER,
+            font=self.font_button,
+        ).pack(side="right")
+
+    def import_instance_archive(self):
+        if self.instance_tasks:
+            self.show_notice(
+                "Instance task in progress", "Wait for the current backup or transfer to finish."
+            )
+            return
+        selected = filedialog.askopenfilename(
+            parent=self,
+            title="Import BreakBlocks instance",
+            filetypes=[("BreakBlocks instance", "*.zip")],
+        )
+        if not selected:
+            return
+        self.run_instance_task(
+            None,
+            "Importing instance…",
+            lambda progress: instance_archives.import_instance(
+                self.store.instances, selected, progress=progress
+            ),
+            self.register_transferred_instance,
+        )
+
+    def register_transferred_instance(self, instance):
+        self.store.data["instances"].append(instance)
+        self.selected_instance_id = instance["id"]
+        self.store.save()
+        self.refresh_instances()
+        self.status.set("Instance copied — preparing launch files…")
+        self.start_install(
+            instance["id"],
+            instance["version"],
+            instance["loader"],
+            success_message=instance["name"] + " is ready",
+            failure_title="Copied instance needs installation",
+        )
+
+    def repair_instance(self, instance):
+        instance = self.idle_instance(instance)
+        if not instance:
+            return
+        self.start_install(
+            instance["id"],
+            instance["version"],
+            instance["loader"],
+            rollback={"loader": instance["loader"], "installed": bool(instance.get("installed"))},
+            backup_reason="Before installation repair",
+            success_message=instance["name"] + " repaired",
+        )
+
     def edit_instance(self):
         instance = next(
             (
@@ -3810,7 +4390,10 @@ class Launcher(ctk.CTk):
         if not instance:
             self.show_notice("Select an instance", "Choose the instance you want to edit first.")
             return
-        if instance["id"] in self.active_installs:
+        if (
+            instance["id"] in self.active_installs
+            or "modrinth:" + instance["id"] in self.active_installs
+        ):
             self.show_notice(
                 "Installation in progress",
                 "Wait for this instance to finish installing before editing it.",
@@ -4021,6 +4604,7 @@ class Launcher(ctk.CTk):
                     instance["version"],
                     new_loader,
                     rollback={"loader": old_loader, "installed": old_installed},
+                    backup_reason="Before loader change",
                     success_message=f"{new_name} now uses {new_loader}",
                     failure_title="Loader change failed",
                 )
@@ -4844,10 +5428,12 @@ class Launcher(ctk.CTk):
         self.mod_progress_text.set(message)
         self.mod_status.set(message)
 
-    def run_modrinth_operation(self, label, operation, complete):
+    def run_modrinth_operation(self, label, operation, complete, backup_reason=None):
         if not self.mod_context_alive() or self.mod_context["busy"]:
             return
         context = self.mod_context
+        if backup_reason and not self.idle_instance(context["instance"]):
+            return
         context["busy"] = True
         operation_id = "modrinth:" + context["instance"]["id"]
         self.show_install_progress(operation_id)
@@ -4859,6 +5445,17 @@ class Launcher(ctk.CTk):
 
         def worker():
             try:
+                if backup_reason:
+                    self.post_ui(lambda: self.mod_status.set("Saving a recovery backup…"))
+                    instance_archives.BackupManager(self.store.root).create(
+                        context["instance"],
+                        backup_reason,
+                        progress=lambda percent, message: self.post_ui(
+                            lambda value=percent, detail=message: self.update_mod_progress(
+                                value, detail
+                            )
+                        ),
+                    )
                 result = operation()
                 self.post_ui(
                     lambda payload=result: self.finish_modrinth_operation(
@@ -4908,6 +5505,7 @@ class Launcher(ctk.CTk):
             f"Installing {title}…",
             lambda: manager.install_project(project_id, project),
             complete,
+            backup_reason="Before installing " + title,
         )
 
     def refresh_modrinth_installed(self):
@@ -4948,6 +5546,7 @@ class Launcher(ctk.CTk):
                 record.get("record_id") or record.get("project_id"), enable
             ),
             complete,
+            backup_reason="Before changing " + title,
         )
 
     def confirm_remove_modrinth(self, record):
@@ -4974,6 +5573,7 @@ class Launcher(ctk.CTk):
                 f"Removing {title}…",
                 lambda: manager.remove_project(record_id),
                 complete,
+                backup_reason="Before removing " + title,
             )
 
         self.confirm_action(
@@ -5039,6 +5639,7 @@ class Launcher(ctk.CTk):
             f"Updating {title}…",
             lambda: manager.update_record(record),
             complete,
+            backup_reason="Before updating " + title,
         )
 
     def update_all_modrinth(self):
@@ -5069,7 +5670,12 @@ class Launcher(ctk.CTk):
             self.refresh_instances()
             self.mod_status.set("All mods with compatible update sources are up to date")
 
-        self.run_modrinth_operation("Updating all compatible mods…", operation, complete)
+        self.run_modrinth_operation(
+            "Updating all compatible mods…",
+            operation,
+            complete,
+            backup_reason="Before updating all mods",
+        )
 
     def refresh_accounts(self):
         accounts = self.store.data["accounts"]
@@ -5545,11 +6151,15 @@ class Launcher(ctk.CTk):
         if not instance:
             self.show_notice("Select an instance", "Choose the instance you want to remove first.")
             return
+        if not self.idle_instance(instance):
+            return
 
         def remove():
             target = (self.store.instances / instance["id"]).resolve()
+            backups = instance_archives.BackupManager(self.store.root).folder(instance["id"])
             if target.parent == self.store.instances.resolve():
                 shutil.rmtree(target, ignore_errors=True)
+                shutil.rmtree(backups, ignore_errors=True)
             self.store.data["instances"] = [
                 item for item in self.store.data["instances"] if item["id"] != instance["id"]
             ]
@@ -5560,7 +6170,7 @@ class Launcher(ctk.CTk):
 
         self.confirm_action(
             "Remove instance?",
-            f"{instance['name']} and its Minecraft files will be permanently removed.",
+            f"{instance['name']}, its Minecraft files and its recovery backups will be permanently removed.",
             remove,
         )
 
@@ -5875,6 +6485,7 @@ class Launcher(ctk.CTk):
         rollback=None,
         success_message=None,
         failure_title="Installation failed",
+        backup_reason=None,
     ):
         self.show_install_progress(ident)
         self.refresh_instances()
@@ -5893,7 +6504,18 @@ class Launcher(ctk.CTk):
             self.post_ui(apply)
 
         def worker():
+            backup_path = None
+            previous = None
+            rollback_data = rollback
             try:
+                if backup_reason:
+                    current = next(
+                        item for item in self.store.data["instances"] if item["id"] == ident
+                    )
+                    previous = dict(current, **(rollback or {}))
+                    backup_path = instance_archives.BackupManager(self.store.root).create(
+                        previous, backup_reason, update
+                    )
                 minecraft_backend.Installer(
                     self.store.root,
                     update,
@@ -5939,14 +6561,27 @@ class Launcher(ctk.CTk):
 
                 self.post_ui(complete)
             except Exception as error:
-                if rollback:
+                detail = str(error)
+                if backup_path is not None:
+                    try:
+                        recovered = instance_archives.BackupManager(self.store.root).restore(
+                            previous, backup_path
+                        )
+                        rollback_data = recovered
+                        detail += "\n\nThe previous mods, configs and launch profile were restored."
+                    except Exception as recovery_error:
+                        detail += (
+                            "\n\nThe recovery backup is saved, but automatic restore failed: "
+                            + str(recovery_error)
+                        )
+                if rollback_data:
                     with self.store_lock:
                         for item in self.store.data["instances"]:
                             if item["id"] == ident:
-                                item.update(rollback)
+                                item.update(rollback_data)
                         self.store.save()
 
-                def failed(detail=str(error)):
+                def failed(detail=detail):
                     self.finish_install_progress(ident)
                     self.refresh_instances()
                     self.show_notice(failure_title, detail, danger=True)
@@ -5989,6 +6624,14 @@ class Launcher(ctk.CTk):
             self.show_notice("Instance not installed", "This instance has not finished installing.")
             return
         ident = instance["id"]
+        if ident in getattr(self, "active_installs", set()) or "modrinth:" + ident in getattr(
+            self, "active_installs", set()
+        ):
+            self.show_notice(
+                "Instance task in progress",
+                "Wait for this instance's backup, mod operation or installation to finish before launching.",
+            )
+            return
         if ident in self.running_instances or ident in self.launching_instances:
             self.show_notice(
                 "Instance already running",
@@ -6420,7 +7063,7 @@ class Launcher(ctk.CTk):
             font=self.font_button,
         ).pack()
 
-    def confirm_action(self, title, message, action):
+    def confirm_action(self, title, message, action, confirm_text="Remove"):
         window, body = self.make_dialog(title, 490, 260)
         ctk.CTkLabel(
             body,
@@ -6461,7 +7104,7 @@ class Launcher(ctk.CTk):
 
         ctk.CTkButton(
             buttons,
-            text="Remove",
+            text=confirm_text,
             command=accept,
             width=105,
             height=38,

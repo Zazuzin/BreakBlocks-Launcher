@@ -257,6 +257,8 @@ def test_dashboard_render_path_builds_all_regions_without_a_tk_display():
         instance_custom_icon_path=lambda _instance: "",
         open_modrinth_manager=noop,
         open_mods_folder=noop,
+        instance_tools=noop,
+        import_instance_archive=noop,
         edit_instance=noop,
         remove_instance=noop,
         launch=noop,

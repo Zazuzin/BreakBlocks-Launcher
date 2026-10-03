@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.21 Alpha - Steam Deck x86_64
+BreakBlocks Launcher 0.9.22 Alpha - Steam Deck x86_64
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -28,7 +28,7 @@ Keep the entire folder together; do not move only the launcher script.
 
 FEATURES
 --------
-The chat and launcher features match the Ubuntu 0.9.21 build. The Windows
+The chat and launcher features match the Ubuntu 0.9.22 build. The Windows
 Ctrl+Shift+F9 overlay is currently Windows only.
 Its Chat page embeds the authenticated BreakBlocks website and keeps the site
 cookie in a dedicated local profile so users normally remain signed in. Chat
@@ -77,3 +77,16 @@ TERMS.md, and THIRD-PARTY-NOTICES.md. Third-party licence texts are included in
 the third-party-licenses folder.
 
 Project: https://github.com/Zazuzin/BreakBlocks-Launcher
+
+INSTANCE TOOLS
+--------------
+Select an instance and open Instance Tools for Backups / Restore, Duplicate,
+Export, and Repair installation. Import is above the instance list.
+
+Backups are automatic before mod and loader changes; the five newest snapshots
+are kept per instance. They include mods, configs, options and the launch
+profile. Restoring preserves worlds and saves the current setup first.
+
+Duplicate and Export offer an Include worlds and screenshots option. Portable
+instance ZIPs exclude launcher accounts and chat sessions. Importing creates a
+new instance and installs the launch files needed on that computer.

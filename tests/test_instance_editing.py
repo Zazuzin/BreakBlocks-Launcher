@@ -150,7 +150,7 @@ def test_loader_change_reinstalls_with_rollback_and_keeps_instance_folder():
     assert 'rollback={"loader": old_loader, "installed": old_installed}' in editor
     assert "minecraft_backend.Installer" in installer
     assert ".install(self.store.instances / ident, version, loader)" in installer
-    assert "item.update(rollback)" in installer
+    assert "item.update(rollback_data)" in installer
     assert "shutil.rmtree" not in editor
     assert "shutil.rmtree" not in installer
 

@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.9.22 Alpha (Windows and Linux)
+
+- Added automatic recovery snapshots before mod changes and loader changes,
+  with manual backups and restore under Instance Tools. The five newest backups
+  are retained; restoring keeps worlds unchanged and backs up the current setup.
+- Added instance duplication and ZIP export/import, with optional worlds and
+  screenshots. Transfers exclude launcher sign-ins and rebuild platform-specific
+  launch files in a new instance.
+- Added explanations and recovery actions for common Java, mod dependency,
+  memory, graphics and installation failures. Unknown errors retain their logs
+  without assigning an unverified cause.
+- Added Repair installation, and prevented launches during instance file changes.
+- Reorganized the README with platform installation steps, SmartScreen guidance,
+  credits, licensing, support, and a placeholder for the upcoming tutorial video.
+
 ## 0.9.21 Alpha (Windows and Linux)
 
 - Updated the launcher repository and updater links after the GitHub rename.

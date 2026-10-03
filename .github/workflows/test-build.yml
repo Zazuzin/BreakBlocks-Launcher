@@ -34,7 +34,10 @@ jobs:
           python -m compileall -q .
           @(
             "tests/test_chat_browser.py",
-            "tests/test_windows_chat_overlay.py"
+            "tests/test_windows_chat_overlay.py",
+            "tests/test_instance_archives.py",
+            "tests/test_instance_recovery_flow.py",
+            "tests/test_launch_diagnostics.py"
           ) | ForEach-Object {
             python $_
             if ($LASTEXITCODE) { exit $LASTEXITCODE }

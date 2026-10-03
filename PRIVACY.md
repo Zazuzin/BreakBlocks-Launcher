@@ -1,6 +1,6 @@
 # BreakBlocks Launcher Privacy Notice
 
-Last updated: 28 September 2026
+Last updated: 3 October 2026
 
 This notice applies to the BreakBlocks Launcher desktop application. The
 [BreakBlocks.com Privacy Policy](https://www.breakblocks.com/privacy-policy)
@@ -28,7 +28,9 @@ features you choose to use:
 - launcher preferences, update settings, and web-chat cookies, cache, and site
   storage kept in the launcher's dedicated browser profile;
 - downloaded Minecraft, Java, loader, mod, and launcher-update files; and
-- launcher and Minecraft log files.
+- launcher and Minecraft log files; and
+- local recovery snapshots and instance exports, including mod configuration
+  files and optional exported worlds and screenshots.
 
 Microsoft tokens and authenticated web-chat cookies are credentials. Do not
 share `launcher.json`, the `web-chat-profile` directory, diagnostic archives,
@@ -36,6 +38,12 @@ screenshots containing sign-in codes, or your launcher data folder.
 Removing a profile from the launcher removes its stored tokens from the launcher
 configuration. You can view the active folder with **Settings → Open data
 folder**.
+
+Recovery snapshots stay on your device and are not uploaded automatically.
+Exports omit launcher accounts, tokens, chat sessions and known mod account
+stores. Other mod configs can still contain personal settings. Share exported
+setups only after reviewing their contents; do not share private recovery
+snapshots as support logs.
 
 ## Information sent over the internet
 
@@ -80,6 +88,10 @@ or instance, clear the files, or uninstall the launcher and delete its data
 folder. Each instance retains its three newest launch logs; older launch logs are
 replaced automatically. `launcher.log` remains until you delete it. Downloaded
 game and mod files remain until the related instance or shared data is removed.
+The five newest recovery snapshots are kept for each instance; older snapshots
+are replaced after a successful new backup. Removing an instance also removes
+its local recovery snapshots. Exported ZIPs remain wherever you saved them
+until you delete them.
 
 Third-party services set their own retention periods. If you send logs or other
 information to BreakBlocks for support, the website privacy policy and the
