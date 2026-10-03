@@ -15,7 +15,7 @@ import mod_sources
 
 def test_block_icon_catalogue():
     assert breakblocks_launcher.APP_NAME == "BreakBlocks Launcher"
-    assert breakblocks_launcher.APP_VERSION == "0.9.23 Alpha"
+    assert breakblocks_launcher.APP_VERSION == "0.9.24 Alpha"
     assert len(breakblocks_launcher.BLOCK_ICONS) == 25
     assert len(breakblocks_launcher.BLOCK_ICON_KEYS) == 25
     asset_root = Path(breakblocks_launcher.__file__).resolve().parent / "assets" / "instance_icons"
@@ -98,7 +98,8 @@ def test_launcher_page_contains_profiles_and_idle_progress_is_hidden():
     assert "self.progress_visible = False" in dashboard_source
     assert '"Modrinth"' in dashboard_source and "launcher.open_modrinth_manager" in dashboard_source
     assert '"Instance Tools"' in dashboard_source and "launcher.instance_tools" in dashboard_source
-    assert "self.open_mods_folder" in inspect.getsource(
+    assert '"Mods Folder"' in dashboard_source and "launcher.open_mods_folder" in dashboard_source
+    assert "self.open_mods_folder" not in inspect.getsource(
         breakblocks_launcher.Launcher.instance_tools
     )
     assert '"Edit Instance"' in dashboard_source and "launcher.edit_instance" in dashboard_source

@@ -38,6 +38,7 @@ jobs:
             "tests/test_instance_archives.py",
             "tests/test_instance_recovery_flow.py",
             "tests/test_launch_diagnostics.py",
+            "tests/test_launcher_paths.py",
             "tests/test_minecraft_launch.py"
           ) | ForEach-Object {
             python $_

@@ -4,10 +4,36 @@ from __future__ import annotations
 
 import os
 import pathlib
+import re
 import shutil
 import tempfile
 
 from app_config import APP_NAME
+
+
+def migrate_account_skin(root: pathlib.Path, account: dict) -> bool:
+    """Reconnect a profile to its moved local skin cache without touching sign-in data."""
+    saved = str(account.get("skin") or "")
+    parts = saved.replace("\\", "/").rsplit("/", 2)
+    saved_in_cache = len(parts) >= 2 and parts[-2].casefold() == "skins"
+    if saved and not saved_in_cache and pathlib.Path(saved).is_file():
+        return False  # Preserve an explicitly selected image outside the skin cache.
+    filenames = []
+    if saved_in_cache and re.fullmatch(r"[A-Za-z0-9_-]{1,80}\.png", parts[-1], re.I):
+        filenames.append(parts[-1])
+    ident = str(account.get("id") or "")
+    if re.fullmatch(r"[A-Za-z0-9_-]{1,80}", ident):
+        filenames.append(ident + ".png")
+    folder = (root / "skins").resolve()
+    for filename in dict.fromkeys(filenames):
+        candidate = folder / filename
+        if candidate.is_file() and candidate.resolve().parent == folder:
+            current = str(candidate)
+            if current != saved:
+                account["skin"] = current
+                return True
+            return False
+    return False
 
 
 def migrate_legacy_data(preferred: pathlib.Path, legacy: pathlib.Path) -> None:

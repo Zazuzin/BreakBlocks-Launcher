@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.24 Alpha (Windows and Linux)
+
+- Aligned the instance count, Create instance and Import controls on one row.
+- Restored Mods Folder as a direct main-screen button. Instance Tools sits beside
+  Launch Minecraft and no longer contains the Mods Folder action.
+- Restored Microsoft account pictures from the moved local skin cache after the
+  launcher data-folder migration, without changing sign-in data.
+
 ## 0.9.23 Alpha (Windows and Linux)
 
 - Fixed existing launch profiles retaining old absolute paths after the launcher

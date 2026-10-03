@@ -52,7 +52,7 @@ from app_config import (
     DEFAULT_UPDATE_CHANNEL,
     UPDATE_CHANNELS,
 )
-from launcher_paths import launcher_data_root
+from launcher_paths import launcher_data_root, migrate_account_skin
 from process_environment import open_system_target, system_process_environment
 
 BRAND_WORDMARK_SIZE = (161, 63)
@@ -1001,7 +1001,7 @@ class LauncherDashboardCanvas(tk.Canvas):
 
         action_labels = (
             ("Modrinth", launcher.open_modrinth_manager, selected, SURFACE_ALT, SURFACE_HOVER),
-            ("Instance Tools", launcher.instance_tools, selected, SURFACE_ALT, SURFACE_HOVER),
+            ("Mods Folder", launcher.open_mods_folder, selected, SURFACE_ALT, SURFACE_HOVER),
             (
                 "Edit Instance",
                 launcher.edit_instance,
@@ -1070,7 +1070,7 @@ class LauncherDashboardCanvas(tk.Canvas):
         self._button(
             x1 + 12,
             launch_top,
-            x2 - 12,
+            x2 - 158,
             bottom,
             launch_text,
             launcher.launch,
@@ -1078,6 +1078,17 @@ class LauncherDashboardCanvas(tk.Canvas):
             hover=ACCENT_HOVER,
             enabled=can_launch,
             font_size=12,
+        )
+        self._button(
+            x2 - 152,
+            launch_top,
+            x2 - 12,
+            bottom,
+            "Instance Tools",
+            launcher.instance_tools,
+            fill=SURFACE_ALT,
+            hover=SURFACE_HOVER,
+            enabled=selected,
         )
 
     def _draw_instances_card(self, x1, y1, x2, y2):
@@ -1089,34 +1100,45 @@ class LauncherDashboardCanvas(tk.Canvas):
         )
         self.create_text(
             x1 + 18,
-            y1 + 47,
+            y1 + 53,
             text="Your Minecraft environments",
             fill=MUTED,
             font=self._font(10),
             anchor="w",
         )
+        import_left = x2 - 92
+        create_right = import_left - 8
+        create_left = create_right - 134
+        count_right = create_left - 10
         self._pill(
-            x2 - 194, y1 + 13, x2 - 158, y1 + 38, str(len(instances)), SURFACE_ALT, MUTED, 10
+            count_right - 36,
+            y1 + 14,
+            count_right,
+            y1 + 40,
+            str(len(instances)),
+            SURFACE_ALT,
+            MUTED,
+            10,
         )
         self._button(
-            x2 - 148,
+            create_left,
             y1 + 8,
-            x2 - 14,
+            create_right,
             y1 + 46,
             "＋  Create instance",
             launcher.create_instance,
             font_size=10,
         )
         self._button(
-            x2 - 101,
-            y1 + 43,
+            import_left,
+            y1 + 8,
             x2 - 14,
-            y1 + 64,
+            y1 + 46,
             "Import",
             launcher.import_instance_archive,
             fill=SURFACE_ALT,
             hover=SURFACE_HOVER,
-            font_size=9,
+            font_size=10,
         )
         list_x1, list_x2 = x1 + 10, x2 - 10
         list_y1, list_y2 = y1 + 66, y2 - 10
@@ -2038,6 +2060,8 @@ class Store:
         for account in self.data["accounts"]:
             if account.get("type") != "Microsoft" and account.get("type") != "Offline":
                 account["type"] = "Offline"
+                migrated = True
+            if account.get("type") == "Microsoft" and migrate_account_skin(self.root, account):
                 migrated = True
             if (
                 account.get("type") == "Microsoft"
@@ -3966,7 +3990,7 @@ class Launcher(ctk.CTk):
         if not instance:
             self.show_notice("Select an instance", "Choose a Minecraft instance first.")
             return
-        window, body = self.make_dialog("Instance Tools", 610, 580)
+        window, body = self.make_dialog("Instance Tools", 610, 520)
         ctk.CTkLabel(body, text="Instance Tools", text_color=TEXT, font=self.font_title).pack(
             anchor="w", padx=26, pady=(22, 4)
         )
@@ -4003,11 +4027,6 @@ class Launcher(ctk.CTk):
                 "Repair installation",
                 "Rebuild Minecraft launch files and the Java selection.",
                 lambda: self.repair_instance(instance),
-            ),
-            (
-                "Open Mods Folder",
-                "Manage this instance's mod files directly.",
-                self.open_mods_folder,
             ),
         )
         for label, description, callback in choices:

@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.23 Alpha - Steam Deck x86_64
+BreakBlocks Launcher 0.9.24 Alpha - Steam Deck x86_64
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -28,7 +28,7 @@ Keep the entire folder together; do not move only the launcher script.
 
 FEATURES
 --------
-The chat and launcher features match the Ubuntu 0.9.23 build. The Windows
+The chat and launcher features match the Ubuntu 0.9.24 build. The Windows
 Ctrl+Shift+F9 overlay is currently Windows only.
 Its Chat page embeds the authenticated BreakBlocks website and keeps the site
 cookie in a dedicated local profile so users normally remain signed in. Chat
