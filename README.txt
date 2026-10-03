@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.20 Alpha - Linux/Steam Deck test build
+BreakBlocks Launcher 0.9.21 Alpha - Linux/Steam Deck test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -48,7 +48,7 @@ Chat and launcher features
 
 Important release note
 ----------------------
-Update checks activate after 0.9.20 is published as a GitHub Release with
+Update checks activate after 0.9.21 is published as a GitHub Release with
 breakblocks-update.json and the matching platform packages. The launcher
 verifies the package before installation. Ubuntu asks for the normal
 administrator approval; portable Steam Deck builds replace themselves and
@@ -57,7 +57,7 @@ restart. Windows packages are unsigned and may be warned about or blocked.
 Data and logs
 -------------
 New data: ~/.local/share/breakblocks-launcher
-Legacy data, when already present: ~/.local/share/zazu-launcher
+Data from older installations moves to the BreakBlocks Launcher folder on first run.
 Launcher log: ~/.local/state/breakblocks-launcher/launcher.log
 Minecraft log: <data directory>/instances/<instance>/latest-launch.log
 
@@ -92,7 +92,7 @@ Minecraft and related assets are © Mojang AB. “Minecraft” is a trademark of
 Microsoft Corporation. Third-party names, logos, and trademarks belong to their
 respective owners.
 
-Project: https://github.com/Zazuzin/Zazu-Launcher
+Project: https://github.com/Zazuzin/BreakBlocks-Launcher
 Minecraft Usage Guidelines: https://www.minecraft.net/usage-guidelines
 Launcher privacy: PRIVACY.md
 Launcher terms: TERMS.md

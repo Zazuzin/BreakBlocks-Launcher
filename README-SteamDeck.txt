@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.20 Alpha - Steam Deck x86_64
+BreakBlocks Launcher 0.9.21 Alpha - Steam Deck x86_64
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -28,7 +28,7 @@ Keep the entire folder together; do not move only the launcher script.
 
 FEATURES
 --------
-The chat and launcher features match the Ubuntu 0.9.20 build. The Windows
+The chat and launcher features match the Ubuntu 0.9.21 build. The Windows
 Ctrl+Shift+F9 overlay is currently Windows only.
 Its Chat page embeds the authenticated BreakBlocks website and keeps the site
 cookie in a dedicated local profile so users normally remain signed in. Chat
@@ -76,4 +76,4 @@ The original launcher source is GPL-3.0-only. See LICENSE, PRIVACY.md,
 TERMS.md, and THIRD-PARTY-NOTICES.md. Third-party licence texts are included in
 the third-party-licenses folder.
 
-Project: https://github.com/Zazuzin/Zazu-Launcher
+Project: https://github.com/Zazuzin/BreakBlocks-Launcher

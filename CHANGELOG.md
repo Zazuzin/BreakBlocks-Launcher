@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.21 Alpha (Windows and Linux)
+
+- Updated the launcher repository and updater links after the GitHub rename.
+- Renamed the remaining internal launcher modules and build entry points.
+- Moved older user data into the BreakBlocks Launcher data folder on first run,
+  retaining existing profiles, instances, and chat sign-in data.
+
 ## 0.9.20 Alpha (Windows and Linux test)
 
 - Brought the shared chat notification and visibility fixes to Ubuntu and the

@@ -10,7 +10,7 @@ from unittest import mock
 
 import chat_browser
 import launcher_update
-import zazu_launcher
+import breakblocks_launcher
 from app_config import APP_VERSION_NUMBER
 from tools import collect_dependency_licenses, generate_update_manifest
 
@@ -69,7 +69,7 @@ def release_fixture(
             "tag_name": "v0.9.1-alpha",
             "draft": False,
             "prerelease": True,
-            "html_url": "https://github.com/Zazuzin/Zazu-Launcher/releases/tag/v0.9.1-alpha",
+            "html_url": "https://github.com/Zazuzin/BreakBlocks-Launcher/releases/tag/v0.9.1-alpha",
             "body": "Fallback notes",
             "assets": [
                 {
@@ -226,7 +226,7 @@ def test_update_manifest_names_match_alpha_and_stable_release_assets():
             manifest = generate_update_manifest.build_manifest(
                 "1.2.3",
                 f"v1.2.3{suffix}",
-                "Zazuzin/Zazu-Launcher",
+                "Zazuzin/BreakBlocks-Launcher",
                 assets,
                 channel,
             )
@@ -245,7 +245,7 @@ def test_update_manifest_names_match_alpha_and_stable_release_assets():
 
 
 def test_runtime_dependency_licence_versions_match_requirements():
-    root = Path(zazu_launcher.__file__).resolve().parent
+    root = Path(breakblocks_launcher.__file__).resolve().parent
     requirements = "\n".join(
         (root / filename).read_text(encoding="utf-8")
         for filename in ("requirements.txt", "requirements-dev.txt")
@@ -280,7 +280,7 @@ def test_settings_defaults_and_legal_copy_are_present():
     with tempfile.TemporaryDirectory() as temporary:
         os.environ["XDG_DATA_HOME"] = temporary
         try:
-            store = zazu_launcher.Store()
+            store = breakblocks_launcher.Store()
             settings = store.data["settings"]
             store.file.write_text(
                 json.dumps(
@@ -298,7 +298,7 @@ def test_settings_defaults_and_legal_copy_are_present():
                 ),
                 encoding="utf-8",
             )
-            migrated_settings = zazu_launcher.Store().data["settings"]
+            migrated_settings = breakblocks_launcher.Store().data["settings"]
         finally:
             if old_xdg is None:
                 os.environ.pop("XDG_DATA_HOME", None)
@@ -320,20 +320,20 @@ def test_settings_defaults_and_legal_copy_are_present():
     assert "irc_connect_on_startup" not in migrated_settings
     assert migrated_settings["chat_browser_defaults_version"] == 1
     assert settings["legal_notice_version"] == 0
-    assert zazu_launcher.account_type_label({"type": "Microsoft"}) == "Microsoft"
-    assert zazu_launcher.account_type_label({"type": "Offline"}) == "Offline"
-    assert zazu_launcher.account_type_label({"type": "Cracked"}) == "Offline"
-    assert zazu_launcher.has_verified_minecraft_ownership(
+    assert breakblocks_launcher.account_type_label({"type": "Microsoft"}) == "Microsoft"
+    assert breakblocks_launcher.account_type_label({"type": "Offline"}) == "Offline"
+    assert breakblocks_launcher.account_type_label({"type": "Cracked"}) == "Offline"
+    assert breakblocks_launcher.has_verified_minecraft_ownership(
         [{"type": "Microsoft", "entitlement_verified_at": 1}]
     )
-    assert not zazu_launcher.has_verified_minecraft_ownership(
+    assert not breakblocks_launcher.has_verified_minecraft_ownership(
         [
             {"type": "Microsoft"},
             {"type": "Offline", "entitlement_verified_at": 1},
         ]
     )
 
-    source = Path(zazu_launcher.__file__).read_text(encoding="utf-8")
+    source = Path(breakblocks_launcher.__file__).read_text(encoding="utf-8")
     assert '"OFFLINE ACCOUNTS"' in source
     assert 'text="Add offline account"' in source
     assert '"type": "Offline"' in source
@@ -347,7 +347,7 @@ def test_settings_defaults_and_legal_copy_are_present():
     assert "TERMS.md" in source
     assert "f\"{account['name']}  •  {account_type_label(account)}\"" in source
     assert "text=account_type_label(account)" in source
-    about_source = inspect.getsource(zazu_launcher.Launcher.about_ui)
+    about_source = inspect.getsource(breakblocks_launcher.Launcher.about_ui)
     assert "Created by Zazuzin for the BreakBlocks community" in about_source
     assert "Minecraft community hub" in about_source
     assert "Etianl" not in about_source
@@ -355,14 +355,14 @@ def test_settings_defaults_and_legal_copy_are_present():
 
 
 def test_updates_tab_runs_one_automatic_check_per_opened_instance():
-    source = inspect.getsource(zazu_launcher.Launcher.select_mod_tab)
+    source = inspect.getsource(breakblocks_launcher.Launcher.select_mod_tab)
     assert 'name == "Updates"' in source
     assert "not self.mod_updates_checked" in source
     assert "self.after(0, self.check_modrinth_updates)" in source
 
 
 def test_legal_documents_cover_current_data_flows_and_are_packaged():
-    root = Path(zazu_launcher.__file__).resolve().parent
+    root = Path(breakblocks_launcher.__file__).resolve().parent
     project_license = (root / "LICENSE").read_text(encoding="utf-8")
     project_metadata = (root / "pyproject.toml").read_text(encoding="utf-8")
     privacy = (root / "PRIVACY.md").read_text(encoding="utf-8")
@@ -372,7 +372,7 @@ def test_legal_documents_cover_current_data_flows_and_are_packaged():
     website_changes = (root / "WEBSITE-LEGAL-CHANGES.md").read_text(encoding="utf-8")
     workflow = (root / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     spec = (root / "BreakBlocksLauncher.spec").read_text(encoding="utf-8")
-    bootstrap = (root / "zazu_launcher_boot.pyw").read_text(encoding="utf-8")
+    bootstrap = (root / "breakblocks_launcher_boot.pyw").read_text(encoding="utf-8")
 
     for expected in (
         "Microsoft profile",
@@ -432,7 +432,7 @@ def test_legacy_microsoft_account_receives_entitlement_proof():
         )
         os.environ["XDG_DATA_HOME"] = temporary
         try:
-            store = zazu_launcher.Store()
+            store = breakblocks_launcher.Store()
         finally:
             if old_xdg is None:
                 os.environ.pop("XDG_DATA_HOME", None)
@@ -440,7 +440,7 @@ def test_legacy_microsoft_account_receives_entitlement_proof():
                 os.environ["XDG_DATA_HOME"] = old_xdg
         account = store.data["accounts"][0]
         assert account["entitlement_verified_at"] > 0
-        assert zazu_launcher.has_verified_minecraft_ownership(store.data["accounts"])
+        assert breakblocks_launcher.has_verified_minecraft_ownership(store.data["accounts"])
 
 
 def test_legacy_offline_account_label_is_migrated():
@@ -460,7 +460,7 @@ def test_legacy_offline_account_label_is_migrated():
         )
         os.environ["XDG_DATA_HOME"] = temporary
         try:
-            store = zazu_launcher.Store()
+            store = breakblocks_launcher.Store()
         finally:
             if old_xdg is None:
                 os.environ.pop("XDG_DATA_HOME", None)
@@ -472,17 +472,17 @@ def test_legacy_offline_account_label_is_migrated():
 
 
 def test_removed_dashboard_implementation_does_not_remain_after_return():
-    source = Path(zazu_launcher.__file__).read_text(encoding="utf-8")
+    source = Path(breakblocks_launcher.__file__).read_text(encoding="utf-8")
     assert "setup_launcher_dashboard" not in source
     assert "dashboard_scaled_font" not in source
     assert "self.instance_scroll" not in source
 
 
 def test_linux_launcher_uses_the_desktop_file_window_class():
-    source = inspect.getsource(zazu_launcher.Launcher.__init__)
+    source = inspect.getsource(breakblocks_launcher.Launcher.__init__)
     assert 'className="BreakBlocksLauncher"' in source
     desktop = (
-        Path(zazu_launcher.__file__).resolve().parent
+        Path(breakblocks_launcher.__file__).resolve().parent
         / "packaging"
         / "linux"
         / "breakblocks-launcher.desktop"
@@ -492,36 +492,38 @@ def test_linux_launcher_uses_the_desktop_file_window_class():
 
 def test_navigation_icons_are_real_antialiased_images():
     for name in ("launcher", "chat", "settings", "about"):
-        image = zazu_launcher.nav_icon_image(name)
+        image = breakblocks_launcher.nav_icon_image(name)
         assert image.mode == "RGBA"
         assert image.size == (80, 80)
         assert image.getchannel("A").getbbox() is not None
 
 
 def test_transparent_icon_trim_removes_padding_and_preserves_a_square():
-    image = zazu_launcher.Image.new("RGBA", (20, 12), (0, 0, 0, 0))
-    zazu_launcher.ImageDraw.Draw(image).rectangle((4, 2, 9, 9), fill="white")
-    trimmed = zazu_launcher.trim_transparent_square(image)
+    image = breakblocks_launcher.Image.new("RGBA", (20, 12), (0, 0, 0, 0))
+    breakblocks_launcher.ImageDraw.Draw(image).rectangle((4, 2, 9, 9), fill="white")
+    trimmed = breakblocks_launcher.trim_transparent_square(image)
     assert trimmed.size == (8, 8)
     assert trimmed.getchannel("A").getbbox() == (1, 0, 7, 8)
 
 
 def test_linux_package_records_the_permission_and_runtime_fixes():
-    root = Path(zazu_launcher.__file__).resolve().parent / "packaging" / "linux"
+    root = Path(breakblocks_launcher.__file__).resolve().parent / "packaging" / "linux"
     control = (root / "control").read_text(encoding="utf-8")
     wrapper = (root / "breakblocks-launcher").read_text(encoding="utf-8")
     postinst = (root / "postinst").read_text(encoding="utf-8")
     assert f"Version: {APP_VERSION_NUMBER}" in control
     assert "python3-tk" in control
-    assert '/usr/bin/python3 "$app_dir/app/zazu_launcher.py"' in wrapper
+    assert '/usr/bin/python3 "$app_dir/app/breakblocks_launcher.py"' in wrapper
     assert "chmod -R a+rX /usr/lib/breakblocks-launcher" in postinst
     build_script = (root / "build-deb.sh").read_text(encoding="utf-8")
     assert '"$install_root/.deb-package"' in build_script
+    assert "display_environment.py" in build_script
+    assert "launcher_paths.py" in build_script
 
 
 def test_update_dialog_routes_packaged_installs_to_the_self_updater():
-    dialog_source = inspect.getsource(zazu_launcher.Launcher.show_launcher_update)
-    download_source = inspect.getsource(zazu_launcher.Launcher.download_launcher_update)
+    dialog_source = inspect.getsource(breakblocks_launcher.Launcher.show_launcher_update)
+    download_source = inspect.getsource(breakblocks_launcher.Launcher.download_launcher_update)
     assert 'INSTALL_LINUX_DEB: "Download and install"' in dialog_source
     assert 'INSTALL_SOURCE: "Open release page"' in dialog_source
     assert "install_debian_update(archive)" in download_source
@@ -529,7 +531,7 @@ def test_update_dialog_routes_packaged_installs_to_the_self_updater():
 
 
 def test_release_workflow_publishes_every_update_target():
-    root = Path(zazu_launcher.__file__).resolve().parent
+    root = Path(breakblocks_launcher.__file__).resolve().parent
     workflow = (root / ".github" / "workflows" / "release.yml").read_text(encoding="utf-8")
     assert "BreakBlocks-Launcher-$env:VERSION-Windows-x86_64.zip" in workflow
     assert "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" in workflow
@@ -538,7 +540,7 @@ def test_release_workflow_publishes_every_update_target():
 
 
 def test_manual_test_workflow_builds_but_does_not_publish_packages():
-    root = Path(zazu_launcher.__file__).resolve().parent
+    root = Path(breakblocks_launcher.__file__).resolve().parent
     workflow = (root / ".github" / "workflows" / "test-build.yml").read_text(encoding="utf-8")
     assert "workflow_dispatch:" in workflow
     assert "- main" in workflow

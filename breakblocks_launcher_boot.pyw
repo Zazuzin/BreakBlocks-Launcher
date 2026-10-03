@@ -4,6 +4,7 @@ import sys
 import traceback
 
 from display_environment import enable_windows_per_monitor_dpi
+from launcher_paths import launcher_data_root
 
 enable_windows_per_monitor_dpi()
 
@@ -19,22 +20,7 @@ if sys.platform.startswith("linux"):
     if font_directory is not None:
         os.environ.setdefault("FONTCONFIG_PATH", str(font_directory))
         os.environ.setdefault("FONTCONFIG_FILE", "fonts.conf")
-if os.name == "nt":
-    STATE_ROOT = pathlib.Path(os.environ.get("LOCALAPPDATA", pathlib.Path.home() / "AppData/Local"))
-    PREFERRED_DATA_DIR = STATE_ROOT / "BreakBlocks Launcher"
-    LEGACY_DATA_DIR = STATE_ROOT / "Zazu Launcher"
-else:
-    STATE_ROOT = pathlib.Path(
-        os.environ.get("XDG_STATE_HOME", pathlib.Path.home() / ".local/state")
-    )
-    PREFERRED_DATA_DIR = STATE_ROOT / "breakblocks-launcher"
-    LEGACY_DATA_DIR = STATE_ROOT / "zazu-launcher"
-DATA_DIR = (
-    LEGACY_DATA_DIR
-    if LEGACY_DATA_DIR.exists() and not PREFERRED_DATA_DIR.exists()
-    else PREFERRED_DATA_DIR
-)
-DATA_DIR.mkdir(parents=True, exist_ok=True)
+DATA_DIR = launcher_data_root(state=True)
 if PACKAGED_RUNTIME:
     os.environ.setdefault("SSL_CERT_FILE", str(PACKAGE_DIR / "certs" / "cacert.pem"))
     os.environ.setdefault("TCL_LIBRARY", str(RUNTIME_DIR / "tcl" / "tcl8.6"))
@@ -70,7 +56,7 @@ try:
         from chat_browser import main as chat_browser_main
 
         raise SystemExit(chat_browser_main(sys.argv[1:]))
-    from zazu_launcher import Launcher
+    from breakblocks_launcher import Launcher
 
     Launcher().mainloop()
 except Exception:

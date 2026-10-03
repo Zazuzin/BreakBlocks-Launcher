@@ -13,7 +13,7 @@ datas += [
 ]
 
 analysis = Analysis(
-    ["zazu_launcher_boot.pyw"],
+    ["breakblocks_launcher_boot.pyw"],
     pathex=[],
     binaries=[],
     datas=datas,

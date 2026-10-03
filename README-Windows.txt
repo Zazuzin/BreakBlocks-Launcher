@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.15 Alpha - Windows x64 overlay test build
+BreakBlocks Launcher 0.9.21 Alpha - Windows x64 test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -12,8 +12,8 @@ Install
 Python and the GUI runtime are included. Java is selected or downloaded
 separately for each Minecraft version when required.
 
-Windows overlay test in 0.9.15
-------------------------------
+Windows overlay
+---------------
 - Launch Minecraft from BreakBlocks, then press Ctrl+Shift+F9 while its window
   is active to bring the signed-in web chat over the game. Reply in the same
   browser session. Press Esc or Ctrl+Shift+F9 to return to Minecraft.
@@ -78,7 +78,7 @@ the size and SHA-256 checksum before replacing the installation and restarting.
 Data and logs
 -------------
 New data: %LOCALAPPDATA%\BreakBlocks Launcher
-Legacy data, when already present: %LOCALAPPDATA%\Zazu Launcher
+Data from older installations moves to the BreakBlocks Launcher folder on first run.
 Launcher log: <active data directory>\launcher.log
 Minecraft log: <active data directory>\instances\<instance>\latest-launch.log
 
@@ -112,7 +112,7 @@ Minecraft and related assets are © Mojang AB. “Minecraft” is a trademark of
 Microsoft Corporation. Third-party names, logos, and trademarks belong to their
 respective owners.
 
-Project: https://github.com/Zazuzin/Zazu-Launcher
+Project: https://github.com/Zazuzin/BreakBlocks-Launcher
 Minecraft Usage Guidelines: https://www.minecraft.net/usage-guidelines
 Launcher privacy: PRIVACY.md
 Launcher terms: TERMS.md

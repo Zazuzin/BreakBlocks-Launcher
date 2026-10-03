@@ -8,12 +8,12 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import chat_browser
-import zazu_launcher
+import breakblocks_launcher
 
 
 def test_chat_url_is_the_authenticated_breakblocks_connect_page():
     assert chat_browser.CHAT_URL == "https://irc.breakblocks.com/#/connect"
-    assert zazu_launcher.BREAKBLOCKS_CHAT_WEB_URL == chat_browser.CHAT_URL
+    assert breakblocks_launcher.BREAKBLOCKS_CHAT_WEB_URL == chat_browser.CHAT_URL
 
 
 def test_profile_directory_is_private_and_persistent():
@@ -200,7 +200,7 @@ def test_browser_helper_rejects_an_overridden_url():
 def test_launcher_starts_browser_with_a_dedicated_local_profile():
     with tempfile.TemporaryDirectory() as temporary:
         launcher = SimpleNamespace(store=SimpleNamespace(root=Path(temporary)))
-        command = zazu_launcher.Launcher.chat_browser_command(launcher, 456)
+        command = breakblocks_launcher.Launcher.chat_browser_command(launcher, 456)
         assert "--chat-browser" in command
         assert command[command.index("--parent-handle") + 1] == "456"
         profile = Path(command[command.index("--profile-directory") + 1])
@@ -247,17 +247,17 @@ def test_chat_notification_uses_launcher_branding_and_compact_title():
 
 
 def test_launcher_restores_and_clears_the_chat_unread_badge():
-    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
-    show_page_source = inspect.getsource(zazu_launcher.Launcher.show_page)
-    monitor_source = inspect.getsource(zazu_launcher.Launcher.monitor_chat_browser)
+    sidebar_source = inspect.getsource(breakblocks_launcher.Launcher.build_sidebar)
+    show_page_source = inspect.getsource(breakblocks_launcher.Launcher.show_page)
+    monitor_source = inspect.getsource(breakblocks_launcher.Launcher.monitor_chat_browser)
     assert "chat_unread_badge" in sidebar_source
     assert 'set_chat_page_visible(name == "Chat")' in show_page_source
     assert "refresh_chat_unread_badge" in monitor_source
 
 
 def test_chat_unread_badge_matches_sidebar_and_hover_backgrounds():
-    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
-    update_source = inspect.getsource(zazu_launcher.Launcher.update_chat_unread_badge_background)
+    sidebar_source = inspect.getsource(breakblocks_launcher.Launcher.build_sidebar)
+    update_source = inspect.getsource(breakblocks_launcher.Launcher.update_chat_unread_badge_background)
     assert "bg_color=SIDEBAR" in sidebar_source
     assert 'button.bind(\n                    "<Enter>"' in sidebar_source
     assert 'button.bind(\n                    "<Leave>"' in sidebar_source
@@ -266,8 +266,8 @@ def test_chat_unread_badge_matches_sidebar_and_hover_backgrounds():
 
 
 def test_chat_fills_the_complete_area_beside_the_sidebar():
-    chat_source = inspect.getsource(zazu_launcher.Launcher.chat_web_ui)
-    show_page_source = inspect.getsource(zazu_launcher.Launcher.show_page)
+    chat_source = inspect.getsource(breakblocks_launcher.Launcher.chat_web_ui)
+    show_page_source = inspect.getsource(breakblocks_launcher.Launcher.show_page)
     assert "page.grid_rowconfigure(0, weight=1)" in chat_source
     assert 'self.chat_browser_host.grid(row=0, column=0, sticky="nsew")' in chat_source
     assert "toolbar" not in chat_source
@@ -280,8 +280,8 @@ def test_chat_fills_the_complete_area_beside_the_sidebar():
 
 
 def test_chat_sidebar_button_has_open_in_browser_context_menu():
-    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
-    menu_source = inspect.getsource(zazu_launcher.Launcher.show_chat_context_menu)
+    sidebar_source = inspect.getsource(breakblocks_launcher.Launcher.build_sidebar)
+    menu_source = inspect.getsource(breakblocks_launcher.Launcher.show_chat_context_menu)
     assert 'button.bind("<Button-3>", self.show_chat_context_menu)' in sidebar_source
     assert 'label="Open in browser"' in sidebar_source
     assert "BREAKBLOCKS_CHAT_WEB_URL" in sidebar_source
@@ -289,20 +289,20 @@ def test_chat_sidebar_button_has_open_in_browser_context_menu():
 
 
 def test_native_irc_transport_and_credentials_are_not_used_by_launcher():
-    source = Path(zazu_launcher.__file__).read_text(encoding="utf-8")
+    source = Path(breakblocks_launcher.__file__).read_text(encoding="utf-8")
     assert "import irc_client" not in source
     assert "IrcClient(" not in source
     assert "irc_server_password" in source  # migration removes legacy saved values
     assert "settings.pop(obsolete_key, None)" in source
-    assert not hasattr(zazu_launcher.Launcher, "connect_irc")
-    assert not hasattr(zazu_launcher.Launcher, "send_irc_message")
+    assert not hasattr(breakblocks_launcher.Launcher, "connect_irc")
+    assert not hasattr(breakblocks_launcher.Launcher, "send_irc_message")
 
 
 def test_chat_page_starts_the_browser_only_when_opened():
-    source = inspect.getsource(zazu_launcher.Launcher.show_page)
+    source = inspect.getsource(breakblocks_launcher.Launcher.show_page)
     assert 'if name == "Chat"' in source
     assert "self.ensure_chat_browser()" in source
-    constructor = inspect.getsource(zazu_launcher.Launcher.__init__)
+    constructor = inspect.getsource(breakblocks_launcher.Launcher.__init__)
     assert "connect_irc_on_startup" not in constructor
 
 

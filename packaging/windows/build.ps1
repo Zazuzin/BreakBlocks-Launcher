@@ -30,7 +30,9 @@ Copy-Item $Licences (Join-Path $PackageRoot "third-party-licenses") -Recurse -Fo
 
 $Output = Join-Path $ProjectRoot "dist-release"
 New-Item -ItemType Directory -Path $Output -Force | Out-Null
-$Archive = Join-Path $Output "BreakBlocks-Launcher-0.9.15-Windows-x86_64.zip"
+$Version = & $Python -c "from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)"
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+$Archive = Join-Path $Output "BreakBlocks-Launcher-$Version-Windows-x86_64.zip"
 if (Test-Path -LiteralPath $Archive) { Remove-Item -LiteralPath $Archive -Force }
 Compress-Archive -Path $PackageRoot -DestinationPath $Archive -CompressionLevel Optimal
 Write-Host "Created $Archive"

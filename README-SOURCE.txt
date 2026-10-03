@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.20 Alpha - synchronized source package
+BreakBlocks Launcher 0.9.21 Alpha - synchronized source package
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -11,7 +11,7 @@ Requirements
 Install and run
 ---------------
   python -m pip install -r requirements.txt
-  python zazu_launcher_boot.pyw
+  python breakblocks_launcher_boot.pyw
 
 Development checks
 ------------------
@@ -26,7 +26,7 @@ or Microsoft account.
 Main modules
 ------------
 - app_config.py: product version and release endpoints
-- zazu_launcher.py: state, accounts, settings, and desktop interface
+- breakblocks_launcher.py: state, accounts, settings, and desktop interface
 - minecraft_backend.py: instance installation and Minecraft launching
 - modrinth_client.py: Modrinth browsing, inventory, and updates
 - mod_sources.py: trusted external mod sources
@@ -37,14 +37,13 @@ Main modules
 - THIRD-PARTY-NOTICES.md: bundled dependency attribution index
 - LEGAL-RELEASE-CHECKLIST.md: completed work and release blockers
 
-The old zazu_* module names remain internal for compatibility with existing
-installations. Public UI and package names use BreakBlocks Launcher.
+Existing account, instance, and chat-session data moves into the BreakBlocks
+Launcher folder on first run after updating.
 
 Release process
 ---------------
-PUBLISHING.md documents the GitHub Actions release, code-signing requirements,
-update manifest, and Alpha/Stable tag formats. Public Windows releases
-intentionally fail if trusted Authenticode credentials are not configured.
+PUBLISHING.md documents the GitHub Actions release, unsigned Windows packages,
+update manifest, and Alpha/Stable tag formats.
 
 Crash handling
 --------------
@@ -72,7 +71,7 @@ Minecraft and related assets are © Mojang AB. “Minecraft” is a trademark of
 Microsoft Corporation. Third-party names, logos, and trademarks belong to their
 respective owners.
 
-Project: https://github.com/Zazuzin/Zazu-Launcher
+Project: https://github.com/Zazuzin/BreakBlocks-Launcher
 Minecraft Usage Guidelines: https://www.minecraft.net/usage-guidelines
 Launcher privacy: PRIVACY.md
 Launcher terms: TERMS.md

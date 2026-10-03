@@ -5,7 +5,7 @@ app_dir="/usr/lib/breakblocks-launcher"
 log_dir="${XDG_STATE_HOME:-$HOME/.local/state}/breakblocks-launcher"
 mkdir -p "$log_dir"
 
-if ! /usr/bin/python3 "$app_dir/app/zazu_launcher.py" "$@" >>"$log_dir/launcher.log" 2>&1; then
+if ! /usr/bin/python3 "$app_dir/app/breakblocks_launcher.py" "$@" >>"$log_dir/launcher.log" 2>&1; then
     xdg-open "$log_dir/launcher.log" 2>/dev/null || true
     exit 1
 fi

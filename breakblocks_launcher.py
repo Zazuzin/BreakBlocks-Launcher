@@ -50,6 +50,7 @@ from app_config import (
     DEFAULT_UPDATE_CHANNEL,
     UPDATE_CHANNELS,
 )
+from launcher_paths import launcher_data_root
 from process_environment import open_system_target, system_process_environment
 
 BRAND_WORDMARK_SIZE = (161, 63)
@@ -1980,23 +1981,7 @@ class Store:
 
     def __init__(self):
         self._save_lock = threading.RLock()
-        if os.name == "nt":
-            base = pathlib.Path(
-                os.environ.get("LOCALAPPDATA", pathlib.Path.home() / "AppData/Local")
-            )
-            preferred_root = base / APP_NAME
-            legacy_root = base / "Zazu Launcher"
-        else:
-            base = pathlib.Path(
-                os.environ.get("XDG_DATA_HOME", pathlib.Path.home() / ".local/share")
-            )
-            preferred_root = base / "breakblocks-launcher"
-            legacy_root = base / "zazu-launcher"
-        # Existing users keep their instances and accounts without a risky move.
-        # New installations use the rebranded data directory.
-        self.root = (
-            legacy_root if legacy_root.exists() and not preferred_root.exists() else preferred_root
-        )
+        self.root = launcher_data_root()
         self.instances = self.root / "instances"
         self.file = self.root / "launcher.json"
         self.instances.mkdir(parents=True, exist_ok=True)
@@ -3077,7 +3062,7 @@ class Launcher(ctk.CTk):
         ]
         if getattr(sys, "frozen", False):
             return [sys.executable, *arguments]
-        return [sys.executable, str(APP_DIR / "zazu_launcher.py"), *arguments]
+        return [sys.executable, str(APP_DIR / "breakblocks_launcher.py"), *arguments]
 
     def ensure_chat_browser(self):
         if self.closing:
@@ -3263,7 +3248,7 @@ class Launcher(ctk.CTk):
             project_links,
             text="Project on GitHub",
             command=lambda: self.open_external_url(
-                "https://github.com/Zazuzin/Zazu-Launcher",
+                "https://github.com/Zazuzin/BreakBlocks-Launcher",
                 "BreakBlocks Launcher GitHub",
             ),
             width=150,

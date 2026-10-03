@@ -2,9 +2,9 @@
 
 Reviewed: 28 September 2026
 
-This source snapshot contains the BreakBlocks Launcher 0.9.6 Alpha code and the
-authenticated BreakBlocks web-chat replacement. The separate in-game chat
-overlay or Fabric integration is intentionally not part of this release.
+This is a historical review of the 0.9.6 Alpha source snapshot. Current
+versions also include a Windows game-chat overlay and have renamed the launcher
+modules and GitHub repository. See CHANGELOG.md for later changes.
 
 ## Checks completed
 
@@ -12,9 +12,8 @@ overlay or Fabric integration is intentionally not part of this release.
 - Every Python file compiles under Python 3.12.
 - No private keys, passwords, client secrets, access tokens, build output, user
   data, logs, or Python cache files are included.
-- Product wording uses **BreakBlocks Launcher**. Remaining `zazu_*` names are
-  compatibility-sensitive internal module/data names or the existing GitHub
-  repository address.
+- Product wording in that snapshot used **BreakBlocks Launcher**. Later builds
+  renamed the internal launcher modules and repository.
 - The Microsoft OAuth client ID is a public application identifier, not a
   secret. No client secret is used by the desktop device-code flow.
 - Linux source retains the tested system-Tk, permission, Microsoft sign-in,

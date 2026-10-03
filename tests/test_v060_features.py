@@ -10,16 +10,16 @@ from PIL import Image
 
 import display_environment
 import mod_sources
-import zazu_launcher
+import breakblocks_launcher
 
 
 def test_block_icon_catalogue():
-    assert zazu_launcher.APP_NAME == "BreakBlocks Launcher"
-    assert zazu_launcher.APP_VERSION == "0.9.20 Alpha"
-    assert len(zazu_launcher.BLOCK_ICONS) == 25
-    assert len(zazu_launcher.BLOCK_ICON_KEYS) == 25
-    asset_root = Path(zazu_launcher.__file__).resolve().parent / "assets" / "instance_icons"
-    for key, label in zazu_launcher.BLOCK_ICONS:
+    assert breakblocks_launcher.APP_NAME == "BreakBlocks Launcher"
+    assert breakblocks_launcher.APP_VERSION == "0.9.21 Alpha"
+    assert len(breakblocks_launcher.BLOCK_ICONS) == 25
+    assert len(breakblocks_launcher.BLOCK_ICON_KEYS) == 25
+    asset_root = Path(breakblocks_launcher.__file__).resolve().parent / "assets" / "instance_icons"
+    for key, label in breakblocks_launcher.BLOCK_ICONS:
         assert label
         path = asset_root / f"{key}.png"
         assert path.is_file(), path
@@ -44,10 +44,11 @@ def test_existing_instances_receive_stable_icons():
                     }
                 )
             )
-            first = zazu_launcher.Store()
+            first = breakblocks_launcher.Store()
+            assert first.root == Path(temporary) / "breakblocks-launcher"
             assigned = first.data["instances"][0]["icon"]
-            second = zazu_launcher.Store()
-            assert assigned in zazu_launcher.BLOCK_ICON_KEYS
+            second = breakblocks_launcher.Store()
+            assert assigned in breakblocks_launcher.BLOCK_ICON_KEYS
             assert second.data["instances"][0]["icon"] == assigned
         finally:
             if old_xdg is None:
@@ -61,7 +62,7 @@ def test_rebrand_uses_new_data_root_without_hiding_legacy_data():
         old_xdg = os.environ.get("XDG_DATA_HOME")
         os.environ["XDG_DATA_HOME"] = temporary
         try:
-            fresh = zazu_launcher.Store()
+            fresh = breakblocks_launcher.Store()
             assert fresh.root == Path(temporary) / "breakblocks-launcher"
         finally:
             if old_xdg is None:
@@ -75,10 +76,10 @@ def test_custom_icon_path_stays_inside_instance_root():
         store = SimpleNamespace(instances=Path(temporary) / "instances")
         store.instances.mkdir()
         launcher = SimpleNamespace(store=store)
-        safe = zazu_launcher.Launcher.instance_custom_icon_path(launcher, {"id": "safe-instance"})
+        safe = breakblocks_launcher.Launcher.instance_custom_icon_path(launcher, {"id": "safe-instance"})
         assert safe == store.instances / "safe-instance" / "launcher-icon.png"
         try:
-            zazu_launcher.Launcher.instance_custom_icon_path(launcher, {"id": "../escape"})
+            breakblocks_launcher.Launcher.instance_custom_icon_path(launcher, {"id": "../escape"})
         except ValueError:
             pass
         else:
@@ -86,8 +87,8 @@ def test_custom_icon_path_stays_inside_instance_root():
 
 
 def test_launcher_page_contains_profiles_and_idle_progress_is_hidden():
-    source = Path(zazu_launcher.__file__).read_text()
-    dashboard_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas)
+    source = Path(breakblocks_launcher.__file__).read_text()
+    dashboard_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas)
     assert 'self.pages["Launcher"]' in source
     assert 'self.pages["Accounts"]' not in source
     assert 'title = "MICROSOFT PROFILES"' in dashboard_source
@@ -102,7 +103,7 @@ def test_launcher_page_contains_profiles_and_idle_progress_is_hidden():
 
 
 def test_modrinth_manager_is_an_integrated_page_not_a_popup():
-    source = Path(zazu_launcher.__file__).read_text()
+    source = Path(breakblocks_launcher.__file__).read_text()
     manager_source = source[
         source.index("    def open_modrinth_manager") : source.index("    def mod_context_alive")
     ]
@@ -115,7 +116,7 @@ def test_modrinth_manager_is_an_integrated_page_not_a_popup():
 
 
 def test_breakblocks_branding_assets_are_packaged_and_used():
-    app_root = Path(zazu_launcher.__file__).resolve().parent
+    app_root = Path(breakblocks_launcher.__file__).resolve().parent
     logo_path = app_root / "assets" / "branding" / "breakblocks_launcher_logo.png"
     icon_path = app_root / "assets" / "branding" / "breakblocks_launcher_icon.png"
     windows_icon_path = app_root / "assets" / "branding" / "breakblocks_launcher.ico"
@@ -128,7 +129,7 @@ def test_breakblocks_branding_assets_are_packaged_and_used():
     with Image.open(icon_path) as image:
         assert image.format == "PNG"
         assert image.size == (512, 512)
-    source = Path(zazu_launcher.__file__).read_text()
+    source = Path(breakblocks_launcher.__file__).read_text()
     assert "SetCurrentProcessExplicitAppUserModelID" in source
     assert 'self.title(f"{APP_NAME} {APP_VERSION}")' in source
     assert '"BreakBlocks.Launcher"' in source
@@ -137,14 +138,14 @@ def test_breakblocks_branding_assets_are_packaged_and_used():
 
 
 def test_windows_enables_native_per_monitor_dpi_before_tk_loads():
-    app_root = Path(zazu_launcher.__file__).resolve().parent
-    launcher_source = (app_root / "zazu_launcher.py").read_text(encoding="utf-8")
-    boot_source = (app_root / "zazu_launcher_boot.pyw").read_text(encoding="utf-8")
+    app_root = Path(breakblocks_launcher.__file__).resolve().parent
+    launcher_source = (app_root / "breakblocks_launcher.py").read_text(encoding="utf-8")
+    boot_source = (app_root / "breakblocks_launcher_boot.pyw").read_text(encoding="utf-8")
     assert launcher_source.index("enable_windows_per_monitor_dpi()") < launcher_source.index(
         "import tkinter as tk"
     )
     assert boot_source.index("enable_windows_per_monitor_dpi()") < boot_source.index(
-        "from zazu_launcher import Launcher"
+        "from breakblocks_launcher import Launcher"
     )
     dpi_source = inspect.getsource(display_environment.enable_windows_per_monitor_dpi)
     assert "SetProcessDpiAwarenessContext" in dpi_source
@@ -154,10 +155,10 @@ def test_windows_enables_native_per_monitor_dpi_before_tk_loads():
 
 
 def test_fixed_launcher_layout_matches_the_requested_three_columns():
-    source = Path(zazu_launcher.__file__).read_text()
-    launcher_source = inspect.getsource(zazu_launcher.Launcher.launcher_ui)
-    redraw_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas.redraw)
-    launch_card_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas._draw_launch_card)
+    source = Path(breakblocks_launcher.__file__).read_text()
+    launcher_source = inspect.getsource(breakblocks_launcher.Launcher.launcher_ui)
+    redraw_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas.redraw)
+    launch_card_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_launch_card)
     assert 'text="READY TO LAUNCH"' in launch_card_source
     assert "self.launch_dashboard = LauncherDashboardCanvas(page, self)" in launcher_source
     assert 'self.launch_dashboard.grid(row=0, column=0, sticky="nsew")' in launcher_source
@@ -172,8 +173,8 @@ def test_fixed_launcher_layout_matches_the_requested_three_columns():
 
 
 def test_fixed_launcher_proportions_fit_the_minimum_window():
-    columns = zazu_launcher.LAUNCHER_COLUMN_SPECS
-    rows = zazu_launcher.LAUNCHER_ROW_SPECS
+    columns = breakblocks_launcher.LAUNCHER_COLUMN_SPECS
+    rows = breakblocks_launcher.LAUNCHER_ROW_SPECS
     assert columns == ((14, 420), (6, 220), (5, 205))
     assert rows == ((0, 350), (1, 205))
     assert columns[0][0] > columns[1][0] + columns[2][0]
@@ -184,12 +185,12 @@ def test_fixed_launcher_proportions_fit_the_minimum_window():
     usable_height = 650 - 38 - 24 - 20
     vertical_card_gap = 12
     assert sum(minimum for _weight, minimum in rows) + vertical_card_gap <= usable_height
-    redraw_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas.redraw)
+    redraw_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas.redraw)
     assert "launch_height = min(430, max(300, height - 205 - gap))" in redraw_source
 
 
 def test_narrow_account_cards_stack_controls_instead_of_clipping():
-    source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas._draw_accounts_card)
+    source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_accounts_card)
     assert "button_width = (x2 - x1 - 28 - button_gap) / 2" in source
     assert '"Use this account"' in source
     assert "content_right - 10" in source
@@ -197,8 +198,8 @@ def test_narrow_account_cards_stack_controls_instead_of_clipping():
 
 
 def test_launcher_customisation_and_manual_geometry_are_removed():
-    source = Path(zazu_launcher.__file__).read_text()
-    show_page_source = inspect.getsource(zazu_launcher.Launcher.show_page)
+    source = Path(breakblocks_launcher.__file__).read_text()
+    show_page_source = inspect.getsource(breakblocks_launcher.Launcher.show_page)
     assert 'text="Edit layout"' not in source
     assert 'text="Reset layout"' not in source
     assert "dashboard_dock_layout" not in source
@@ -212,17 +213,17 @@ def test_launcher_customisation_and_manual_geometry_are_removed():
 
 
 def test_compact_community_card_contains_verified_links():
-    source = Path(zazu_launcher.__file__).read_text()
-    asset_root = Path(zazu_launcher.__file__).resolve().parent / "assets" / "community"
-    assert zazu_launcher.BREAKBLOCKS_URL == "https://breakblocks.com"
-    assert zazu_launcher.BREAKBLOCKS_DISCORD_URL == "https://breakblocks.com/discord"
-    assert zazu_launcher.BREAKBLOCKS_PATREON_URL == "https://www.patreon.com/cw/BreakBlocks"
+    source = Path(breakblocks_launcher.__file__).read_text()
+    asset_root = Path(breakblocks_launcher.__file__).resolve().parent / "assets" / "community"
+    assert breakblocks_launcher.BREAKBLOCKS_URL == "https://breakblocks.com"
+    assert breakblocks_launcher.BREAKBLOCKS_DISCORD_URL == "https://breakblocks.com/discord"
+    assert breakblocks_launcher.BREAKBLOCKS_PATREON_URL == "https://www.patreon.com/cw/BreakBlocks"
     assert (
-        zazu_launcher.MOUNTAINS_OF_LAVA_YOUTUBE_URL
+        breakblocks_launcher.MOUNTAINS_OF_LAVA_YOUTUBE_URL
         == "https://www.youtube.com/@mountainsoflavainc.6913"
     )
-    assert zazu_launcher.ZAZUZIN_GITHUB_URL == "https://github.com/Zazuzin"
-    assert zazu_launcher.ETIANL_GITHUB_URL == "https://github.com/etianl"
+    assert breakblocks_launcher.ZAZUZIN_GITHUB_URL == "https://github.com/Zazuzin"
+    assert breakblocks_launcher.ETIANL_GITHUB_URL == "https://github.com/etianl"
     expected_assets = {
         "breakblocks_wordmark.png": (317, 48),
         "breakblocks_wordmark_transparent.png": (317, 48),
@@ -253,7 +254,7 @@ def test_compact_community_card_contains_verified_links():
     assert "image=self.etianl_github_image" in source
     assert "fg_color=BBC_CHARCOAL" in source
     assert 'fg_color="#131313"' in source
-    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
+    sidebar_source = inspect.getsource(breakblocks_launcher.Launcher.build_sidebar)
     zazuzin_start = sidebar_source.index('text="Zazuzin"')
     etianl_start = sidebar_source.index('text="Etianl"')
     assert "fg_color=BBC_CHARCOAL" in sidebar_source[zazuzin_start:etianl_start]
@@ -281,9 +282,9 @@ def test_compact_community_card_contains_verified_links():
 
 
 def test_dashboard_uses_neutral_panels_and_a_logo_matched_brand_band():
-    dashboard_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas)
-    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
-    assert zazu_launcher.BBC_CHARCOAL == "#2d2d2d"
+    dashboard_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas)
+    sidebar_source = inspect.getsource(breakblocks_launcher.Launcher.build_sidebar)
+    assert breakblocks_launcher.BBC_CHARCOAL == "#2d2d2d"
     assert dashboard_source.count('fill=BBC_CHARCOAL, outline=""') >= 3
     assert (
         "brand_band = tk.Frame(sidebar, bg=BRAND_WORDMARK_BG, bd=0, highlightthickness=0)"
@@ -297,20 +298,20 @@ def test_dashboard_uses_neutral_panels_and_a_logo_matched_brand_band():
 
 
 def test_launcher_palette_is_neutral_and_keeps_semantic_colours():
-    assert zazu_launcher.BG == "#181818"
-    assert zazu_launcher.SIDEBAR == zazu_launcher.BBC_CHARCOAL
-    assert zazu_launcher.SURFACE == zazu_launcher.BBC_CHARCOAL
-    assert zazu_launcher.SURFACE_ALT == "#383838"
-    assert zazu_launcher.ACCENT == "#5a5a5a"
-    assert zazu_launcher.SELECTION == "#c2c2c2"
-    assert zazu_launcher.RED == "#ef4b4b"
-    assert zazu_launcher.GREEN == "#7ce7b3"
-    assert zazu_launcher.GREEN_BG == "#20543f"
-    assert zazu_launcher.GREEN_BORDER == "#62a98b"
+    assert breakblocks_launcher.BG == "#181818"
+    assert breakblocks_launcher.SIDEBAR == breakblocks_launcher.BBC_CHARCOAL
+    assert breakblocks_launcher.SURFACE == breakblocks_launcher.BBC_CHARCOAL
+    assert breakblocks_launcher.SURFACE_ALT == "#383838"
+    assert breakblocks_launcher.ACCENT == "#5a5a5a"
+    assert breakblocks_launcher.SELECTION == "#c2c2c2"
+    assert breakblocks_launcher.RED == "#ef4b4b"
+    assert breakblocks_launcher.GREEN == "#7ce7b3"
+    assert breakblocks_launcher.GREEN_BG == "#20543f"
+    assert breakblocks_launcher.GREEN_BORDER == "#62a98b"
 
 
 def test_discord_button_keeps_charcoal_background_with_a_complete_outline():
-    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
+    sidebar_source = inspect.getsource(breakblocks_launcher.Launcher.build_sidebar)
     discord_start = sidebar_source.index('text="Join Discord"')
     discord_end = sidebar_source.index('text="Support on Patreon"')
     discord_source = sidebar_source[discord_start:discord_end]
@@ -321,9 +322,9 @@ def test_discord_button_keeps_charcoal_background_with_a_complete_outline():
 
 
 def test_instance_icons_render_without_a_button_shell():
-    launcher_source = inspect.getsource(zazu_launcher.Launcher.launcher_ui)
-    row_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas._draw_instances_card)
-    launch_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas._draw_launch_card)
+    launcher_source = inspect.getsource(breakblocks_launcher.Launcher.launcher_ui)
+    row_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_instances_card)
+    launch_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_launch_card)
     assert "self.create_image(list_x1 + 42, top + 43, image=photo)" in row_source
     assert "self.create_image(x1 + 55, summary_top + 41, image=photo)" in launch_source
     assert "CTkButton" not in row_source
@@ -337,16 +338,16 @@ def test_active_profile_is_stably_sorted_to_the_top():
         {"id": "active", "name": "Active"},
         {"id": "third", "name": "Third"},
     ]
-    ordered = zazu_launcher.active_account_first(accounts, "active")
+    ordered = breakblocks_launcher.active_account_first(accounts, "active")
     assert [account["id"] for account in ordered] == ["active", "first", "third"]
     assert [account["id"] for account in accounts] == ["first", "active", "third"]
-    account_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas._draw_accounts_card)
+    account_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_accounts_card)
     assert "accounts = active_account_first(" in account_source
 
 
 def test_sidebar_uses_the_approved_static_stacked_breakblocks_logo():
     asset = (
-        Path(zazu_launcher.__file__).resolve().parent
+        Path(breakblocks_launcher.__file__).resolve().parent
         / "assets"
         / "branding"
         / "breakblocks_original_logo_stacked.png"
@@ -359,25 +360,25 @@ def test_sidebar_uses_the_approved_static_stacked_breakblocks_logo():
         assert logo.size == (161, 63)
         assert getattr(logo, "n_frames", 1) == 1
         assert logo.getpixel((0, 0)) == (19, 19, 19)
-    assert zazu_launcher.BRAND_WORDMARK_BG == "#131313"
-    wordmark = zazu_launcher.load_brand_wordmark(asset)
+    assert breakblocks_launcher.BRAND_WORDMARK_BG == "#131313"
+    wordmark = breakblocks_launcher.load_brand_wordmark(asset)
     assert wordmark.mode == "RGBA"
     assert wordmark.size == (161, 63)
-    sidebar_source = inspect.getsource(zazu_launcher.Launcher.build_sidebar)
+    sidebar_source = inspect.getsource(breakblocks_launcher.Launcher.build_sidebar)
     assert "ImageTk.PhotoImage(self.brand_wordmark_image)" in sidebar_source
     assert "width=BRAND_WORDMARK_SIZE[0]" in sidebar_source
     assert "height=BRAND_WORDMARK_SIZE[1]" in sidebar_source
     assert "image=self.brand_image" not in sidebar_source
     assert ').pack(anchor="center", pady=(9, 0))' in sidebar_source
     assert "UNOFFICIAL MINECRAFT LAUNCHER" not in sidebar_source
-    source = Path(zazu_launcher.__file__).read_text(encoding="utf-8")
+    source = Path(breakblocks_launcher.__file__).read_text(encoding="utf-8")
     assert "brand_wordmark_animation" not in source
     assert "breakblocks_wordmark_animated.gif" not in source
 
 
 def test_canvas_buttons_use_integer_aligned_corner_geometry():
-    button_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas._button)
-    shape_source = inspect.getsource(zazu_launcher.LauncherDashboardCanvas._button_rectangle)
+    button_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._button)
+    shape_source = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._button_rectangle)
     assert "self._button_rectangle(" in button_source
     assert "int(round(value))" in shape_source
     assert "smooth=False" in shape_source
@@ -385,7 +386,7 @@ def test_canvas_buttons_use_integer_aligned_corner_geometry():
 
 
 def test_fabric_creation_offers_breakblocks_essentials_and_all_mod_inventory():
-    source = Path(zazu_launcher.__file__).read_text()
+    source = Path(breakblocks_launcher.__file__).read_text()
     assert 'text="BREAKBLOCKS ESSENTIALS — FABRIC ONLY"' in source
     assert '("meteor-client", "Meteor Client")' in source
     assert '("trouser-streak", "Trouser Streak")' in source

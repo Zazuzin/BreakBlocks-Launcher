@@ -33,8 +33,8 @@ done
     --target "$app_root/vendor" \
     -r "$project_root/requirements.txt"
 
-for file in app_config.py chat_browser.py launcher_update.py minecraft_backend.py \
-    mod_sources.py modrinth_client.py process_environment.py zazu_launcher.py; do
+for file in app_config.py chat_browser.py display_environment.py launcher_paths.py launcher_update.py minecraft_backend.py \
+    mod_sources.py modrinth_client.py process_environment.py breakblocks_launcher.py; do
     cp "$project_root/$file" "$app_root/$file"
 done
 cp -R "$project_root/assets" "$app_root/assets"

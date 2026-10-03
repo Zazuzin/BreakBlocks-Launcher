@@ -8,7 +8,7 @@ instances, accounts, mods, and BreakBlocks community links. The interface is
 written in Python with Tk and CustomTkinter and is packaged for Windows and
 Linux/Steam Deck.
 
-The current development version is **0.9.20 Alpha**.
+The current development version is **0.9.21 Alpha**.
 
 ## Current features
 
@@ -34,14 +34,14 @@ Python 3.10 or newer with Tk support is required.
 
 ```bash
 python -m pip install -r requirements.txt
-python zazu_launcher_boot.pyw
+python breakblocks_launcher_boot.pyw
 ```
 
 ## Project structure
 
 | Path | Responsibility |
 | --- | --- |
-| `zazu_launcher.py` | Application state and desktop interface |
+| `breakblocks_launcher.py` | Application state and desktop interface |
 | `minecraft_backend.py` | Version installation, Java selection, and launch commands |
 | `modrinth_client.py` | Mod inventory, search, installation, and updates |
 | `mod_sources.py` | Trusted non-Modrinth source adapters |
@@ -50,9 +50,18 @@ python zazu_launcher_boot.pyw
 | `app_config.py` | Product version and release endpoints |
 | `tests/` | Dependency-light regression tests |
 
-Older internal `zazu_*` names remain in place where changing them could break
-existing data or shortcuts. They are implementation details; the public product
-name is BreakBlocks Launcher.
+Existing account, instance, and chat-session data moves into the BreakBlocks
+Launcher folder on first run after updating.
+
+## Microsoft permission screen
+
+Microsoft displays the name from the Entra application registration, not the
+launcher window or GitHub repository. This build signs in with application
+(client) ID `f621b9a7-a133-49c0-b04b-66de82aacb62`. If the consent screen
+still says “Zazu Launcher,” locate **that exact ID** under Entra ID → App
+registrations, then update its display name and Branding & properties to
+“BreakBlocks Launcher.” Keep the client ID: switching to another registration
+can interrupt Minecraft authentication and its existing approval.
 
 ## Tests and formatting
 

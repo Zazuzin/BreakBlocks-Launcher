@@ -7,16 +7,16 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import minecraft_backend
-import zazu_launcher
+import breakblocks_launcher
 
 
 def test_playtime_formatter_is_compact_and_stable():
-    assert zazu_launcher.format_playtime(0) == "0m"
-    assert zazu_launcher.format_playtime(12) == "<1m"
-    assert zazu_launcher.format_playtime(60) == "1m"
-    assert zazu_launcher.format_playtime(3660) == "1h 1m"
-    assert zazu_launcher.format_playtime(90000) == "1d 1h"
-    assert zazu_launcher.format_playtime("invalid") == "0m"
+    assert breakblocks_launcher.format_playtime(0) == "0m"
+    assert breakblocks_launcher.format_playtime(12) == "<1m"
+    assert breakblocks_launcher.format_playtime(60) == "1m"
+    assert breakblocks_launcher.format_playtime(3660) == "1h 1m"
+    assert breakblocks_launcher.format_playtime(90000) == "1d 1h"
+    assert breakblocks_launcher.format_playtime("invalid") == "0m"
 
 
 def test_store_migrates_playtime_without_losing_existing_instance_data():
@@ -43,7 +43,7 @@ def test_store_migrates_playtime_without_losing_existing_instance_data():
                     }
                 )
             )
-            store = zazu_launcher.Store()
+            store = breakblocks_launcher.Store()
             assert store.data["instances"][0]["playtime_seconds"] == 125
             assert store.data["instances"][0]["custom"] == "kept"
             assert store.data["instances"][1]["playtime_seconds"] == 0
@@ -65,7 +65,7 @@ def test_recorded_playtime_accumulates_and_persists():
 
     store.save = save
     launcher = SimpleNamespace(store=store, store_lock=threading.RLock())
-    zazu_launcher.Launcher.record_instance_playtime(launcher, "example", 61.2, 123456)
+    breakblocks_launcher.Launcher.record_instance_playtime(launcher, "example", 61.2, 123456)
     assert store.data["instances"][0]["playtime_seconds"] == 181
     assert store.data["instances"][0]["last_played_at"] == 123456
     assert store.save_calls == 1
@@ -93,7 +93,7 @@ def test_background_playtime_merge_preserves_changes_from_a_reopened_launcher():
         )
         store.save = lambda: data_file.write_text(json.dumps(store.data))
         launcher = SimpleNamespace(store=store, store_lock=threading.RLock())
-        zazu_launcher.Launcher.record_instance_playtime(launcher, "example", 60, 999)
+        breakblocks_launcher.Launcher.record_instance_playtime(launcher, "example", 60, 999)
         saved = json.loads(data_file.read_text())
         assert saved["accounts"] == [{"id": "new-account"}]
         assert saved["settings"]["memory"] == 8192
@@ -107,7 +107,7 @@ def test_regular_store_save_does_not_overwrite_newer_background_playtime():
         old_xdg = os.environ.get("XDG_DATA_HOME")
         os.environ["XDG_DATA_HOME"] = temporary
         try:
-            store = zazu_launcher.Store()
+            store = breakblocks_launcher.Store()
             store.data["instances"] = [
                 {"id": "example", "name": "Original", "playtime_seconds": 60}
             ]
@@ -130,8 +130,8 @@ def test_regular_store_save_does_not_overwrite_newer_background_playtime():
 
 
 def test_ready_card_and_edit_dialog_expose_requested_instance_controls():
-    launch_card = inspect.getsource(zazu_launcher.LauncherDashboardCanvas._draw_launch_card)
-    editor = inspect.getsource(zazu_launcher.Launcher.edit_instance)
+    launch_card = inspect.getsource(breakblocks_launcher.LauncherDashboardCanvas._draw_launch_card)
+    editor = inspect.getsource(breakblocks_launcher.Launcher.edit_instance)
     assert '"PLAYTIME"' in launch_card and "format_playtime" in launch_card
     assert '"RAM"' in launch_card and 'f"{memory} MiB"' in launch_card
     assert '"Edit Instance"' in launch_card and "launcher.edit_instance" in launch_card
@@ -145,8 +145,8 @@ def test_ready_card_and_edit_dialog_expose_requested_instance_controls():
 
 
 def test_loader_change_reinstalls_with_rollback_and_keeps_instance_folder():
-    editor = inspect.getsource(zazu_launcher.Launcher.edit_instance)
-    installer = inspect.getsource(zazu_launcher.Launcher.start_install)
+    editor = inspect.getsource(breakblocks_launcher.Launcher.edit_instance)
+    installer = inspect.getsource(breakblocks_launcher.Launcher.start_install)
     assert 'rollback={"loader": old_loader, "installed": old_installed}' in editor
     assert "minecraft_backend.Installer" in installer
     assert ".install(self.store.instances / ident, version, loader)" in installer
@@ -156,7 +156,7 @@ def test_loader_change_reinstalls_with_rollback_and_keeps_instance_folder():
 
 
 def test_launch_watcher_tracks_the_real_process_lifetime():
-    launch = inspect.getsource(zazu_launcher.Launcher.launch)
+    launch = inspect.getsource(breakblocks_launcher.Launcher.launch)
     assert "process = minecraft_backend.launch" in launch
     assert "process.wait()" in launch
     assert "record_instance_playtime" in launch
@@ -236,13 +236,13 @@ def test_nonzero_exit_opens_crash_dialog_while_normal_exit_does_not():
         show_minecraft_crash=lambda *values: crash_calls.append(values),
     )
 
-    zazu_launcher.Launcher.finish_instance_session(launcher, "example", 60, 0, None)
+    breakblocks_launcher.Launcher.finish_instance_session(launcher, "example", 60, 0, None)
     assert crash_calls == []
     assert status_messages[-1].startswith("Minecraft closed")
 
     launcher.running_instances["example"] = 1
     launcher.launching_instances.add("example")
-    zazu_launcher.Launcher.finish_instance_session(launcher, "example", 60, 1, None)
+    breakblocks_launcher.Launcher.finish_instance_session(launcher, "example", 60, 1, None)
     assert crash_calls == [("example", 1, None)]
     assert status_messages[-1] == "Minecraft crashed — exit code 1"
 
@@ -267,7 +267,7 @@ def test_nonzero_exit_after_orderly_window_close_does_not_open_crash_dialog():
     original = minecraft_backend.launch_log_indicates_clean_shutdown
     minecraft_backend.launch_log_indicates_clean_shutdown = lambda _path: True
     try:
-        zazu_launcher.Launcher.finish_instance_session(launcher, "example", 60, 1, None)
+        breakblocks_launcher.Launcher.finish_instance_session(launcher, "example", 60, 1, None)
     finally:
         minecraft_backend.launch_log_indicates_clean_shutdown = original
     assert crash_calls == []
@@ -281,19 +281,19 @@ def test_modal_dialog_guard_blocks_dashboard_click_through():
         _hit_at=lambda _x, _y: {"callback": lambda: (_ for _ in ()).throw(AssertionError())},
     )
     event = SimpleNamespace(x=10, y=10)
-    assert zazu_launcher.LauncherDashboardCanvas._on_button_release(canvas, event) == "break"
+    assert breakblocks_launcher.LauncherDashboardCanvas._on_button_release(canvas, event) == "break"
 
 
 def test_crash_dialog_exposes_report_actions_and_bounded_reader():
-    crash_dialog = inspect.getsource(zazu_launcher.Launcher.show_minecraft_crash)
+    crash_dialog = inspect.getsource(breakblocks_launcher.Launcher.show_minecraft_crash)
     assert 'text="View report"' in crash_dialog
     assert 'text="Open crash folder"' in crash_dialog
     assert 'text="Copy report"' in crash_dialog
     with tempfile.TemporaryDirectory() as temporary:
         report = Path(temporary) / "crash.txt"
         report.write_text("abcdefghij")
-        assert zazu_launcher.read_report_text(report, limit=5).startswith("abcde")
-        assert "Report shortened" in zazu_launcher.read_report_text(report, limit=5)
+        assert breakblocks_launcher.read_report_text(report, limit=5).startswith("abcde")
+        assert "Report shortened" in breakblocks_launcher.read_report_text(report, limit=5)
 
 
 def test_linux_minecraft_window_class_matches_the_observed_game_window():
