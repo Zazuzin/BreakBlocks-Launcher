@@ -32,7 +32,7 @@ def installed_instance(root):
     record = {
         "version": "test",
         "loader": "Vanilla",
-        "java": sys.executable,
+        "java": str(Path(sys.executable).resolve()),
         "javaMajor": 21,
         "assets": str(assets),
         "assetIndex": "test",
@@ -118,7 +118,7 @@ def test_relocation_leaves_external_java_and_similarly_named_roots_alone():
         record["arguments"]["jvm"].append("-Dexternal=" + nested_external)
         record["legacyArguments"] = f'--gameDir "{instance / "minecraft"}"'
         updated = backend.relocate_launch_record(record, base / "new" / "instances" / "example")
-        assert updated["java"] == sys.executable
+        assert updated["java"] == record["java"]
         assert updated["classpath"][-1] == record["classpath"][-1]
         assert updated["classpath"][-2] == record["classpath"][-2]
         assert updated["arguments"]["jvm"][-1] == record["arguments"]["jvm"][-1]
