@@ -48,6 +48,8 @@ def validate() -> dict:
     ):
         raise ValueError("The requested source does not have a successful main build")
     if request["phase"] == "publish":
+        if type(request.get("release_id")) is not int or request["release_id"] <= 0:
+            raise ValueError("Missing reviewed draft release ID")
         for key in ("manifest_sha256", "checksums_sha256"):
             if not re.fullmatch(r"[0-9a-f]{64}", request.get(key, "")):
                 raise ValueError(f"Missing reviewed {key}")
@@ -176,12 +178,27 @@ def prepare(request: dict, assets: Path) -> None:
 def publish(request: dict, assets: Path) -> None:
     repository = os.environ["GH_REPO"]
     tag = request["tag"]
-    release = json.loads(gh("api", f"repos/{repository}/releases/tags/{tag}"))
+    release_endpoint = f"repos/{repository}/releases/{request['release_id']}"
+    release = json.loads(gh("api", release_endpoint))
     if not release["draft"] or not release["prerelease"]:
         raise ValueError("Expected an unpublished Alpha draft")
-    if release["target_commitish"] != request["source"]:
+    if release["target_commitish"] != request["source"] or release["tag_name"] != tag:
         raise ValueError("Release source changed after review")
-    gh("release", "download", tag, "--dir", str(assets))
+    for asset in release["assets"]:
+        if Path(asset["name"]).name != asset["name"]:
+            raise ValueError("Invalid release filename")
+        with (assets / asset["name"]).open("wb") as output:
+            subprocess.run(
+                [
+                    "gh",
+                    "api",
+                    f"repos/{repository}/releases/assets/{asset['id']}",
+                    "-H",
+                    "Accept: application/octet-stream",
+                ],
+                stdout=output,
+                check=True,
+            )
     if digest(assets / "breakblocks-update.json") != request["manifest_sha256"]:
         raise ValueError("The update manifest changed after review")
     checksum_file = assets / "SHA256SUMS.txt"
@@ -231,7 +248,9 @@ def publish(request: dict, assets: Path) -> None:
         )
         if update.version != request["version"]:
             raise ValueError("The launcher cannot parse this platform's update")
-    print(gh("release", "edit", tag, "--draft=false"))
+    published = json.loads(gh("api", "--method", "PATCH", release_endpoint, "-F", "draft=false"))
+    if published["draft"] or published["tag_name"] != tag:
+        raise ValueError("GitHub did not publish the requested release")
     print("Published " + release["html_url"])
     for attempt in range(6):
         update = UpdateClient("0.9.26", platform_key="windows-x86_64").check("alpha")
