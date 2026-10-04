@@ -843,6 +843,12 @@ class LauncherDashboardCanvas(tk.Canvas):
         self._draw_accounts_card("offline", offline_x1, 0, offline_x2, height)
 
         self.scale("all", 0, 0, scale, scale)
+        if scale != 1:
+            for item in self.find_all():
+                if self.type(item) == "text":
+                    wrapping = float(self.itemcget(item, "width"))
+                    if wrapping:
+                        self.itemconfigure(item, width=wrapping * scale)
         for region in self._hit_regions:
             region["bounds"] = tuple(value * scale for value in region["bounds"])
         for region in self._scroll_regions.values():
@@ -7178,6 +7184,10 @@ class Launcher(ctk.CTk):
             return None
 
     def make_dialog(self, title, width, height):
+        scale = getattr(self, "display_scale", 1) * getattr(self, "text_scale", 1)
+        width = min(round(width * scale), max(400, self.winfo_screenwidth() - 80))
+        desired_height = round(height * scale)
+        height = min(desired_height, max(300, self.winfo_screenheight() - 100))
         window = ctk.CTkToplevel(self, fg_color=BG)
         self._modal_windows.add(window)
         window.title(title)
@@ -7186,9 +7196,14 @@ class Launcher(ctk.CTk):
         y = self.winfo_y() + max(20, (self.winfo_height() - height) // 2)
         window.geometry(f"{width}x{height}+{x}+{y}")
         window.transient(self)
-        body = ctk.CTkFrame(
-            window, fg_color=SURFACE, corner_radius=18, border_width=1, border_color=BORDER
-        )
+        if desired_height > height:
+            body = ctk.CTkScrollableFrame(
+                window, fg_color=SURFACE, corner_radius=18, border_width=1, border_color=BORDER
+            )
+        else:
+            body = ctk.CTkFrame(
+                window, fg_color=SURFACE, corner_radius=18, border_width=1, border_color=BORDER
+            )
         body.pack(fill="both", expand=True, padx=14, pady=14)
 
         def dialog_closed(event):
