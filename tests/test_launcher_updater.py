@@ -217,7 +217,7 @@ def test_gui_download_verifies_stages_and_starts_the_restart_helper():
         start_update.assert_called_once()
         staged, detected_root = start_update.call_args.args
         assert detected_root == install.resolve()
-        assert staged.parent.parent == install.parent
+        assert staged.parent.parent == install.parent.resolve()
         assert (staged / executable).read_bytes() == b"new launcher"
         assert (data / "updates/0.9.29/update.zip").read_bytes() == package
         assert account_file.read_bytes() == b"preserved accounts and instances"
