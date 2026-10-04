@@ -8,7 +8,7 @@ import re
 import shlex
 import shutil
 import subprocess
-import time
+import uuid
 
 DEFAULTS = {
     "chat_popups": True,
@@ -152,7 +152,7 @@ def write_chat_preferences(folder, settings, preview=False):
     temporary = destination.with_suffix(".tmp")
     settings = normalized(settings)
     packet = {key: settings[key] for key in CHAT_KEYS}
-    packet["_preview_id"] = time.time_ns() if preview else 0
+    packet["_preview_id"] = uuid.uuid4().hex if preview else 0
     temporary.write_text(json.dumps(packet), encoding="utf-8")
     temporary.replace(destination)
 

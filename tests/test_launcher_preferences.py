@@ -61,10 +61,11 @@ def test_chat_packet_excludes_credentials_and_changes_preview_identity():
     with tempfile.TemporaryDirectory() as temporary:
         root = Path(temporary)
         values = {"chat_volume": 25, "minecraft_token": "private", "java": "custom"}
-        prefs.write_chat_preferences(root, values, preview=True)
-        first = json.loads((root / "launcher-preferences.json").read_text())
-        prefs.write_chat_preferences(root, values, preview=True)
-        second = json.loads((root / "launcher-preferences.json").read_text())
+        with patch("time.time_ns", return_value=42):
+            prefs.write_chat_preferences(root, values, preview=True)
+            first = json.loads((root / "launcher-preferences.json").read_text())
+            prefs.write_chat_preferences(root, values, preview=True)
+            second = json.loads((root / "launcher-preferences.json").read_text())
         assert first["chat_volume"] == 25 and first["_preview_id"] != second["_preview_id"]
         assert "minecraft_token" not in first and "java" not in first
         assert not list(root.glob("*.tmp"))
