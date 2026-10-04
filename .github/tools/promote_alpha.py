@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tarfile
+import time
 import zipfile
 from pathlib import Path
 
@@ -200,6 +201,8 @@ def publish(request: dict, assets: Path) -> None:
     if manifest["version"] != request["version"] or manifest["channel"] != "alpha":
         raise ValueError("Incorrect manifest metadata")
     attached = {asset["name"]: asset for asset in release["assets"]}
+    release_base = f"https://github.com/{repository}/releases/download"
+    draft_ref = release["html_url"].rsplit("/", 1)[-1]
     for entry in manifest["platforms"].values():
         path = assets / entry["filename"]
         asset = attached[path.name]
@@ -207,11 +210,41 @@ def publish(request: dict, assets: Path) -> None:
             digest(path) != entry["sha256"]
             or path.stat().st_size != entry["size"]
             or asset["size"] != entry["size"]
-            or asset["browser_download_url"] != entry["url"]
+            or entry["url"] != f"{release_base}/{tag}/{path.name}"
+            or asset["browser_download_url"]
+            not in {entry["url"], f"{release_base}/{draft_ref}/{path.name}"}
         ):
             raise ValueError("Manifest and release assets disagree")
+    sys.path.insert(0, str(Path.cwd()))
+    from launcher_update import UpdateClient
+
+    # GitHub uses an untagged placeholder URL until a new draft is published.
+    published_metadata = release | {
+        "assets": [
+            asset | {"browser_download_url": f"{release_base}/{tag}/{asset['name']}"}
+            for asset in release["assets"]
+        ]
+    }
+    for platform_key in manifest["platforms"]:
+        update = UpdateClient("0.9.26", platform_key=platform_key)._parse_manifest(
+            manifest, published_metadata, "alpha"
+        )
+        if update.version != request["version"]:
+            raise ValueError("The launcher cannot parse this platform's update")
     print(gh("release", "edit", tag, "--draft=false"))
     print("Published " + release["html_url"])
+    for attempt in range(6):
+        update = UpdateClient("0.9.26", platform_key="windows-x86_64").check("alpha")
+        if update is not None and update.version == request["version"]:
+            break
+        if attempt == 5:
+            raise ValueError("Published Alpha update is not visible to an older launcher")
+        time.sleep(5)
+    if UpdateClient("0.9.26", platform_key="windows-x86_64").check("stable") is not None:
+        raise ValueError("The Alpha release must not be offered on the Stable channel")
+    if UpdateClient(request["version"], platform_key="windows-x86_64").check("alpha"):
+        raise ValueError("The current launcher must not be offered the same version")
+    print("Live updater checks passed: older Alpha detects update; Stable and current do not")
 
 
 if __name__ == "__main__":
