@@ -6,6 +6,7 @@ import os
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
+from unittest import mock
 
 import breakblocks_launcher
 import chat_browser
@@ -216,6 +217,57 @@ def test_launcher_starts_browser_with_a_dedicated_local_profile():
         assert unread == profile / chat_browser.UNREAD_FILE_NAME
         assert visible == profile / chat_browser.VISIBLE_FILE_NAME
         assert "--url" not in command
+
+
+def test_chat_child_keeps_the_packaged_runtime_environment():
+    retry = SimpleNamespace(pack_forget=lambda: None)
+    status = SimpleNamespace(set=lambda _message: None)
+    launcher = SimpleNamespace(
+        closing=False,
+        chat_browser_process=None,
+        chat_browser_monitor_id=None,
+        chat_browser_retry_button=retry,
+        chat_browser_status=status,
+        chat_browser_host=SimpleNamespace(winfo_id=lambda: 123),
+        chat_browser_command=lambda _handle: ["launcher", "--chat-browser"],
+        update_idletasks=lambda: None,
+        after=lambda _delay, _callback: 1,
+        monitor_chat_browser=lambda: None,
+    )
+    paths = {
+        "LD_LIBRARY_PATH": "/launcher/_internal",
+        "TCL_LIBRARY": "/launcher/_internal/_tcl_data",
+        "TK_LIBRARY": "/launcher/_internal/_tk_data",
+        "FONTCONFIG_PATH": "/launcher/fonts",
+    }
+    with (
+        mock.patch.dict(os.environ, paths),
+        mock.patch.object(breakblocks_launcher.subprocess, "Popen") as spawn,
+    ):
+        breakblocks_launcher.Launcher.ensure_chat_browser(launcher)
+    for key, value in paths.items():
+        assert spawn.call_args.kwargs["env"][key] == value
+
+
+def test_chat_process_failure_displays_an_error_and_reload_control():
+    messages = []
+    retry_shown = []
+    launcher = SimpleNamespace(
+        closing=False,
+        chat_browser_process=SimpleNamespace(poll=lambda: 1),
+        chat_browser_shutdown_file=None,
+        chat_browser_status=SimpleNamespace(set=messages.append),
+        chat_browser_retry_button=SimpleNamespace(pack=lambda **_options: retry_shown.append(True)),
+    )
+    launcher.show_chat_startup_failure = lambda message: (
+        breakblocks_launcher.Launcher.show_chat_startup_failure(launcher, message)
+    )
+    with contextlib.redirect_stderr(io.StringIO()):
+        breakblocks_launcher.Launcher.monitor_chat_browser(launcher)
+    assert launcher.chat_browser_process is None
+    assert retry_shown == [True]
+    assert "Reload Chat" in messages[-1]
+    assert "log" in messages[-1]
 
 
 def test_browser_grants_and_presents_breakblocks_notifications():

@@ -45,6 +45,9 @@ Copy-Item README-Windows.txt (Join-Path $PackageRoot "README.txt") -Force
 Copy-Item LICENSE, PRIVACY.md, TERMS.md, THIRD-PARTY-NOTICES.md $PackageRoot -Force
 Copy-Item $Licences (Join-Path $PackageRoot "third-party-licenses") -Recurse -Force
 
+& $Python tools/check_packaged_chat.py (Join-Path $PackageRoot "BreakBlocks Launcher.exe")
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+
 $Output = Join-Path $ProjectRoot "dist-release"
 New-Item -ItemType Directory -Path $Output -Force | Out-Null
 $Version = & $Python -c "from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)"

@@ -8,28 +8,8 @@ on:
 
 permissions:
   contents: read
-  actions: read
 
 jobs:
-  chat-baseline:
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.12"
-      - run: python -m pip install -r requirements.txt
-      - uses: actions/download-artifact@v4
-        with:
-          github-token: ${{ github.token }}
-          run-id: 37195696565
-          name: BreakBlocks-Launcher-0.9.28-Windows-test
-          path: baseline-package
-      - name: Check previous packaged chat
-        env:
-          PYTHONPATH: .
-        run: python tools/check_packaged_chat.py "baseline-package/BreakBlocks Launcher.exe"
-
   windows:
     runs-on: windows-latest
     steps:
@@ -53,11 +33,6 @@ jobs:
           if (-not (Test-Path -LiteralPath "dist\BreakBlocks-Launcher\BreakBlocks Launcher.exe")) {
             throw "The Windows executable is missing from the build."
           }
-      - name: Check packaged chat startup
-        shell: pwsh
-        env:
-          PYTHONPATH: .
-        run: python tools/check_packaged_chat.py "dist/BreakBlocks-Launcher/BreakBlocks Launcher.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: BreakBlocks-Launcher-${{ env.VERSION }}-Windows-test
@@ -103,6 +78,11 @@ jobs:
           bash ./packaging/linux/build-deb.sh
           cp "dist-release/BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" .
           dpkg-deb --contents "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" > /dev/null
+      - name: Check packaged chat startup
+        env:
+          PYTHONPATH: .
+          QTWEBENGINE_DISABLE_SANDBOX: "1"
+        run: xvfb-run -a python tools/check_packaged_chat.py "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
       - uses: actions/upload-artifact@v4
         with:
           name: BreakBlocks-Launcher-${{ env.VERSION }}-Linux-test

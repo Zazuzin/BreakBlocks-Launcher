@@ -16,7 +16,7 @@ from launcher_paths import LEGACY_DATA_FOLDERS
 
 def test_block_icon_catalogue():
     assert breakblocks_launcher.APP_NAME == "BreakBlocks Launcher"
-    assert breakblocks_launcher.APP_VERSION == "0.9.28 Alpha"
+    assert breakblocks_launcher.APP_VERSION == "0.9.29 Alpha"
     assert len(breakblocks_launcher.BLOCK_ICONS) == 25
     assert len(breakblocks_launcher.BLOCK_ICON_KEYS) == 25
     asset_root = Path(breakblocks_launcher.__file__).resolve().parent / "assets" / "instance_icons"

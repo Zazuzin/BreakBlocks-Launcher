@@ -7,6 +7,8 @@ import ctypes
 import json
 import os
 import pathlib
+import re
+import signal
 import subprocess
 import sys
 import tempfile
@@ -132,7 +134,9 @@ def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> No
         ),
         encoding="utf-8",
     )
-    process = subprocess.Popen([str(executable)], stdin=subprocess.DEVNULL)
+    process = subprocess.Popen(
+        [str(executable)], stdin=subprocess.DEVNULL, start_new_session=os.name != "nt"
+    )
     log_path = (
         data / "launcher.log"
         if os.name == "nt"
@@ -153,8 +157,12 @@ def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> No
         print(output, flush=True)
         print("Frozen launcher automatically started its frozen chat child.", flush=True)
     finally:
-        for stop_file in data.glob("web-chat-profile/.stop-*"):
-            stop_file.write_text("stop\n", encoding="utf-8")
+        if log_path.exists():
+            output = log_path.read_text(encoding="utf-8", errors="replace")
+            match = re.search(r"attached child window \d+ to launcher host (\d+)", output)
+            if match:
+                stop_file = data / "web-chat-profile" / f".stop-{process.pid}-{match[1]}"
+                stop_file.write_text("stop\n", encoding="utf-8")
         if os.name == "nt":
             user32 = ctypes.WinDLL("user32", use_last_error=True)
             callback_type = ctypes.WINFUNCTYPE(ctypes.c_int, ctypes.c_void_p, ctypes.c_ssize_t)
@@ -179,7 +187,10 @@ def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> No
 
             user32.EnumWindows(close_window, 0)
         else:
-            process.terminate()
+            try:
+                os.killpg(process.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
         try:
             process.wait(timeout=10)
         except subprocess.TimeoutExpired:

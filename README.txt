@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.28 Alpha - Linux/Steam Deck test build
+BreakBlocks Launcher 0.9.29 Alpha - Linux/Steam Deck test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -48,7 +48,7 @@ Chat and launcher features
 
 Important release note
 ----------------------
-Update checks activate after 0.9.28 is published as a GitHub Release with
+Update checks activate after 0.9.29 is published as a GitHub Release with
 breakblocks-update.json and the matching platform packages. The launcher
 verifies the package before installation. Ubuntu asks for the normal
 administrator approval; portable Steam Deck builds replace themselves and
@@ -112,7 +112,7 @@ Duplicate and Export offer an Include worlds and screenshots option. Portable
 instance ZIPs exclude launcher accounts and chat sessions. Importing creates a
 new instance and installs the launch files needed on that computer.
 
-Settings and startup in 0.9.28
+Settings and startup in 0.9.29
 -----------------------------
 Chat starts in the background with your saved website session. The launcher
 checks for launcher and compatible installed-mod updates at startup and shows

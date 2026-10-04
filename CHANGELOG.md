@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.9.29 Alpha (Windows and Linux)
+
+- Preserve the launcher runtime paths when starting embedded chat, including the bundled Linux Qt libraries.
+- Show chat process errors and a Reload Chat control instead of a permanent loading message.
+- Check background chat startup using the built executable, its real launcher parent and first opening of the Chat page.
+
 ## 0.9.28 Alpha (Windows and Linux)
 
 - Fix packaged Windows and portable Linux launches being mistaken for source copies. Their update button now downloads, verifies, installs and restarts inside the launcher.

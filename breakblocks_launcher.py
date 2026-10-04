@@ -3223,9 +3223,7 @@ class Launcher(ctk.CTk):
         page.grid_columnconfigure(0, weight=1)
         page.grid_rowconfigure(0, weight=1)
 
-        self.chat_browser_status = tk.StringVar(
-            value="The secure BreakBlocks website handles chat sign-in."
-        )
+        self.chat_browser_status = tk.StringVar(value="Loading the secure BreakBlocks web chat…")
 
         self.chat_browser_host = tk.Frame(
             page,
@@ -3244,14 +3242,25 @@ class Launcher(ctk.CTk):
         ).pack(pady=(90, 8))
         ctk.CTkLabel(
             fallback,
-            text=(
-                "Loading the secure BreakBlocks web chat…\n"
-                "Your website session is kept on this device."
-            ),
+            textvariable=self.chat_browser_status,
             text_color=MUTED,
             font=self.font_body,
             justify="center",
+            wraplength=600,
         ).pack()
+        self.chat_browser_retry_button = ctk.CTkButton(
+            fallback,
+            text="Reload Chat",
+            command=self.restart_chat_browser,
+            width=130,
+            font=self.font_body,
+            fg_color=RED,
+            hover_color=RED_HOVER,
+        )
+
+    def show_chat_startup_failure(self, message):
+        self.chat_browser_status.set(message)
+        self.chat_browser_retry_button.pack(pady=16)
 
     def chat_browser_command(self, parent_handle):
         profile_directory = self.store.root / chat_browser.PROFILE_DIRECTORY_NAME
@@ -3304,9 +3313,12 @@ class Launcher(ctk.CTk):
         process = self.chat_browser_process
         if process is not None and process.poll() is None:
             return
+        self.chat_browser_retry_button.pack_forget()
         self.update_idletasks()
         parent_handle = int(self.chat_browser_host.winfo_id())
-        environment = system_process_environment()
+        # Chat is part of this package and needs its bundled Qt/runtime paths.
+        # The cleaned system environment is for external programs such as Java.
+        environment = os.environ.copy()
         if sys.platform.startswith("linux"):
             environment.setdefault("QT_QPA_PLATFORM", "xcb")
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
@@ -3320,7 +3332,10 @@ class Launcher(ctk.CTk):
             )
         except (OSError, ValueError) as error:
             self.chat_browser_process = None
-            self.chat_browser_status.set("The embedded chat browser could not start.")
+            self.show_chat_startup_failure(
+                "Chat could not start. Choose Reload Chat to try again.\n"
+                "Details are available in the launcher log."
+            )
             log_launcher_error("Embedded chat browser", error)
             return
         self.chat_browser_status.set("Loading the secure BreakBlocks web chat…")
@@ -3350,8 +3365,9 @@ class Launcher(ctk.CTk):
         if self.chat_browser_shutdown_file is not None:
             self.chat_browser_shutdown_file.unlink(missing_ok=True)
             self.chat_browser_shutdown_file = None
-        self.chat_browser_status.set(
-            "The embedded chat browser closed. Choose Reload Chat to try again."
+        self.show_chat_startup_failure(
+            "Chat closed before it was ready. Choose Reload Chat to try again.\n"
+            "Details are available in the launcher log."
         )
         log_launcher_message("Embedded chat browser", f"Stopped with exit code {return_code}")
 
