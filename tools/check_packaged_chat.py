@@ -25,7 +25,9 @@ class ChatHost(ctk.CTk):
     ensure_chat_browser = Launcher.ensure_chat_browser
     stop_chat_browser = Launcher.stop_chat_browser
     restart_chat_browser = Launcher.restart_chat_browser
-    show_chat_startup_failure = Launcher.show_chat_startup_failure
+
+    def show_chat_startup_failure(self, message):
+        self.chat_browser_status.set(message)
 
     def monitor_chat_browser(self):
         pass
