@@ -1,0 +1,66 @@
+name: Promote verified Alpha update test
+
+on:
+  push:
+    branches: [release/alpha-update-test]
+    paths:
+      - .github/alpha-update-test.json
+      - .github/workflows/alpha-update-test.yml
+      - .github/tools/promote_alpha.py
+
+permissions:
+  contents: write
+  actions: read
+
+concurrency:
+  group: alpha-update-test-publication
+  cancel-in-progress: false
+
+jobs:
+  release:
+    runs-on: windows-latest
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      PYTHONUTF8: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Validate release request and successful build
+        id: request
+        run: python .github/tools/promote_alpha.py validate
+      - uses: actions/checkout@v4
+        if: steps.request.outputs.phase == 'prepare'
+        with:
+          ref: ${{ steps.request.outputs.source }}
+          path: release-source
+      - uses: actions/download-artifact@v4
+        if: steps.request.outputs.phase == 'prepare'
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.request.outputs.run }}
+          name: BreakBlocks-Launcher-${{ steps.request.outputs.version }}-Windows-test
+          path: release-assets/BreakBlocks-Launcher
+      - uses: actions/download-artifact@v4
+        if: steps.request.outputs.phase == 'prepare'
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ steps.request.outputs.run }}
+          name: BreakBlocks-Launcher-${{ steps.request.outputs.version }}-Linux-test
+          path: release-assets
+      - name: Verify unsigned Windows executable
+        if: steps.request.outputs.phase == 'prepare'
+        shell: pwsh
+        run: |
+          $executable = "release-assets\BreakBlocks-Launcher\BreakBlocks Launcher.exe"
+          if (-not (Test-Path -LiteralPath $executable)) {
+            throw "The Windows executable is missing"
+          }
+          $signature = Get-AuthenticodeSignature $executable
+          if ($signature.Status -ne "NotSigned") {
+            throw "Expected an unsigned executable: $($signature.Status)"
+          }
+      - name: Prepare draft or publish reviewed assets
+        run: python .github/tools/promote_alpha.py release
