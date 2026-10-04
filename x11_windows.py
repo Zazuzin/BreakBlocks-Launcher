@@ -167,7 +167,7 @@ class X11Windows:
             self.lib.XSync(self.display, 0)
             self.lib.XSetErrorHandler(previous)
 
-    def parent(self, window):
+    def tree(self, window):
         root, parent, count = C.c_ulong(), C.c_ulong(), C.c_uint()
         children = C.POINTER(C.c_ulong)()
         with self.checked() as errors:
@@ -179,9 +179,16 @@ class X11Windows:
                 C.byref(children),
                 C.byref(count),
             )
+            values = [children[index] for index in range(count.value)] if children else []
             if children:
                 self.lib.XFree(children)
-        return parent.value if valid and not errors else 0
+        return (parent.value, values) if valid and not errors else (0, [])
+
+    def parent(self, window):
+        return self.tree(window)[0]
+
+    def children(self, window):
+        return self.tree(window)[1]
 
     def bounds(self, window):
         root, child = C.c_ulong(), C.c_ulong()

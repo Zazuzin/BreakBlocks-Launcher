@@ -139,9 +139,19 @@ def check(executable: pathlib.Path, python_script=False) -> None:
 
                     windows = X11Windows()
                     try:
-                        child = int(re.search(r"attached child window (\d+)", output)[1])
                         parent = root.chat_browser_host.winfo_id()
-                        assert windows.parent(child) == parent, "Linux chat became a desktop window"
+                        children = windows.children(parent)
+                        live = [
+                            child
+                            for child in children
+                            if windows.property(child, "_NET_WM_PID") == process.pid
+                        ]
+                        assert len(live) == 1, (
+                            "Linux chat did not have one live embedded browser: "
+                            f"host={parent}, process={process.pid}, children="
+                            f"{[(child, windows.property(child, '_NET_WM_PID')) for child in children]}\n{output}"
+                        )
+                        child = live[0]
                         root.chat_browser_fallback.lift()
                         assert windows.reparent(child, windows.root)
                         deadline = time.monotonic() + 3
