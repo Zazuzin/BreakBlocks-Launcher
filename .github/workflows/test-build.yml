@@ -82,7 +82,7 @@ jobs:
         env:
           PYTHONPATH: .
           QTWEBENGINE_DISABLE_SANDBOX: "1"
-        run: xvfb-run -a python tools/check_linux_desktop.py "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
+        run: xvfb-run -a python tools/check_linux_desktop.py "dist/BreakBlocks-Launcher/BreakBlocks Launcher" --ubuntu-package "BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb"
       - uses: actions/upload-artifact@v4
         with:
           name: BreakBlocks-Launcher-${{ env.VERSION }}-Linux-test

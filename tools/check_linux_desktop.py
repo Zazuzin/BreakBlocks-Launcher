@@ -5,10 +5,11 @@ import os
 import pathlib
 import subprocess
 import sys
+import tempfile
 import time
 
 
-def check(executable):
+def check(executable, ubuntu_package=None):
     desktop = subprocess.Popen(["openbox", "--sm-disable"], stdin=subprocess.DEVNULL)
     try:
         time.sleep(0.5)
@@ -22,6 +23,29 @@ def check(executable):
             env=environment,
             check=True,
         )
+        if ubuntu_package is not None:
+            with tempfile.TemporaryDirectory(prefix="breakblocks-deb-check-") as temporary:
+                subprocess.run(
+                    ["dpkg-deb", "--extract", str(ubuntu_package), temporary], check=True
+                )
+                script = (
+                    pathlib.Path(temporary)
+                    / "usr/lib/breakblocks-launcher/app/breakblocks_launcher.py"
+                )
+                subprocess.run(
+                    [
+                        sys.executable,
+                        "tools/check_packaged_chat.py",
+                        "--python-script",
+                        str(script),
+                    ],
+                    env=environment,
+                    check=True,
+                )
+                print(
+                    "Ubuntu package started its vendored chat and repaired its native attachment.",
+                    flush=True,
+                )
     finally:
         desktop.terminate()
         desktop.wait(timeout=5)
@@ -30,4 +54,6 @@ def check(executable):
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("executable", type=pathlib.Path)
-    check(parser.parse_args().executable.resolve(strict=True))
+    parser.add_argument("--ubuntu-package", type=pathlib.Path)
+    options = parser.parse_args()
+    check(options.executable.resolve(strict=True), options.ubuntu_package)

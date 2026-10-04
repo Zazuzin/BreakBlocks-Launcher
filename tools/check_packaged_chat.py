@@ -18,6 +18,7 @@ from unittest import mock
 
 import customtkinter as ctk
 
+import breakblocks_launcher
 from breakblocks_launcher import Launcher
 
 
@@ -38,7 +39,7 @@ class ChatHost(ctk.CTk):
         pass
 
 
-def check(executable: pathlib.Path) -> None:
+def check(executable: pathlib.Path, python_script=False) -> None:
     with tempfile.TemporaryDirectory(prefix="breakblocks-chat-check-") as temporary:
         folder = pathlib.Path(temporary)
         environment = {
@@ -47,7 +48,7 @@ def check(executable: pathlib.Path) -> None:
             "XDG_DATA_HOME": str(folder / "data"),
         }
         with mock.patch.dict(os.environ, environment):
-            check_launcher_startup(executable, folder)
+            check_launcher_startup(executable, folder, python_script)
             root = ChatHost()
             root.geometry("900x650")
             root.closing = False
@@ -73,8 +74,11 @@ def check(executable: pathlib.Path) -> None:
             process = None
             try:
                 with (
-                    mock.patch.object(sys, "frozen", True, create=True),
-                    mock.patch.object(sys, "executable", str(executable)),
+                    mock.patch.object(sys, "frozen", not python_script, create=True),
+                    mock.patch.object(
+                        sys, "executable", sys.executable if python_script else str(executable)
+                    ),
+                    mock.patch.object(breakblocks_launcher, "APP_DIR", executable.parent),
                 ):
                     root.ensure_chat_browser()
                 process = root.chat_browser_process
@@ -169,7 +173,9 @@ def check(executable: pathlib.Path) -> None:
                     process.wait(timeout=5)
 
 
-def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> None:
+def check_launcher_startup(
+    executable: pathlib.Path, folder: pathlib.Path, python_script=False
+) -> None:
     """Start the real frozen parent so its bootloader environment reaches chat."""
     data = (
         folder / "data/BreakBlocks Launcher"
@@ -190,7 +196,9 @@ def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> No
         encoding="utf-8",
     )
     process = subprocess.Popen(
-        [str(executable)], stdin=subprocess.DEVNULL, start_new_session=os.name != "nt"
+        ([sys.executable, str(executable)] if python_script else [str(executable)]),
+        stdin=subprocess.DEVNULL,
+        start_new_session=os.name != "nt",
     )
     log_path = (
         data / "launcher.log"
@@ -256,5 +264,6 @@ def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> No
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("executable", type=pathlib.Path)
+    parser.add_argument("--python-script", action="store_true")
     options = parser.parse_args()
-    check(options.executable.resolve(strict=True))
+    check(options.executable.resolve(strict=True), options.python_script)

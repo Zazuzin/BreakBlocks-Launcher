@@ -21,7 +21,8 @@ Reviewed: 4 October 2026. Source version: **0.9.30 Alpha**.
   collects dependency licences and packages the launcher. The test and release
   workflows call this same script.
 - The Linux build runs all test files. The X11 focus check additionally runs
-  under Xvfb in the test workflow.
+  under Xvfb. Desktop checks use Openbox to verify rendered chat, keyboard input,
+  game-scoped shortcuts and both portable and extracted Ubuntu package startup.
 - Ubuntu uses system Python and Tk with bundled application dependencies. The
   portable Linux / Steam Deck build uses PyInstaller and includes the fonts.
 - The source-review entry points are listed in `SOURCE-REVIEW.md`.
