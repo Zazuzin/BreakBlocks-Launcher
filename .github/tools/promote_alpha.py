@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tarfile
 import time
+import urllib.request
 import zipfile
 from pathlib import Path
 
@@ -26,7 +27,7 @@ def digest(path: Path) -> str:
 
 def validate() -> dict:
     request = json.loads(Path(".github/alpha-update-test.json").read_text())
-    if request["phase"] not in {"prepare", "publish"}:
+    if request["phase"] not in {"prepare", "publish", "verify"}:
         raise ValueError("Invalid release phase")
     if not re.fullmatch(r"\d+\.\d+\.\d+", request["version"]):
         raise ValueError("Invalid version")
@@ -47,7 +48,7 @@ def validate() -> dict:
         or run["head_branch"] != "main"
     ):
         raise ValueError("The requested source does not have a successful main build")
-    if request["phase"] == "publish":
+    if request["phase"] in {"publish", "verify"}:
         if type(request.get("release_id")) is not int or request["release_id"] <= 0:
             raise ValueError("Missing reviewed draft release ID")
         for key in ("manifest_sha256", "checksums_sha256"):
@@ -251,19 +252,59 @@ def publish(request: dict, assets: Path) -> None:
     published = json.loads(gh("api", "--method", "PATCH", release_endpoint, "-F", "draft=false"))
     if published["draft"] or published["tag_name"] != tag:
         raise ValueError("GitHub did not publish the requested release")
-    print("Published " + release["html_url"])
+    print("Published " + published["html_url"])
+    verify(request)
+
+
+def verify(request: dict) -> None:
+    repository = os.environ["GH_REPO"]
+    release = json.loads(gh("api", f"repos/{repository}/releases/{request['release_id']}"))
+    if (
+        release["draft"]
+        or not release["prerelease"]
+        or release["tag_name"] != request["tag"]
+        or release["target_commitish"] != request["source"]
+    ):
+        raise ValueError("The requested Alpha release is not published")
+    attached = {asset["name"]: asset for asset in release["assets"]}
+    for name, key in (
+        ("breakblocks-update.json", "manifest_sha256"),
+        ("SHA256SUMS.txt", "checksums_sha256"),
+    ):
+        if attached[name]["digest"] != "sha256:" + request[key]:
+            raise ValueError("The published metadata changed after review")
+    sys.path.insert(0, str(Path.cwd()))
+    from launcher_update import UpdateClient
+
+    releases_url = f"https://api.github.com/repos/{repository}/releases"
+
+    def open_release(http_request, **kwargs):
+        # Authenticate only the CI metadata request to avoid a shared runner's
+        # anonymous API quota. Package and manifest downloads remain public.
+        if http_request.full_url == releases_url:
+            http_request.add_header("Authorization", "Bearer " + os.environ["GH_TOKEN"])
+        return urllib.request.urlopen(http_request, **kwargs)
+
+    def client(version: str, platform_key: str = "windows-x86_64"):
+        return UpdateClient(version, opener=open_release, platform_key=platform_key)
+
     for attempt in range(6):
-        update = UpdateClient("0.9.26", platform_key="windows-x86_64").check("alpha")
+        update = client("0.9.26").check("alpha")
         if update is not None and update.version == request["version"]:
             break
         if attempt == 5:
             raise ValueError("Published Alpha update is not visible to an older launcher")
         time.sleep(5)
-    if UpdateClient("0.9.26", platform_key="windows-x86_64").check("stable") is not None:
+    for platform_key in ("linux-deb-x86_64", "linux-portable-x86_64", "linux-x86_64"):
+        update = client("0.9.26", platform_key).check("alpha")
+        if update is None or update.version != request["version"]:
+            raise ValueError(f"No published update for {platform_key}")
+    if client("0.9.26").check("stable") is not None:
         raise ValueError("The Alpha release must not be offered on the Stable channel")
-    if UpdateClient(request["version"], platform_key="windows-x86_64").check("alpha"):
+    if client(request["version"]).check("alpha"):
         raise ValueError("The current launcher must not be offered the same version")
-    print("Live updater checks passed: older Alpha detects update; Stable and current do not")
+    print("Live updater checks passed for Windows, Ubuntu and portable Linux")
+    print("Older Alpha detects update; Stable and current versions do not")
 
 
 if __name__ == "__main__":
@@ -275,6 +316,9 @@ if __name__ == "__main__":
     elif sys.argv[1] == "release":
         assets = Path("release-assets")
         assets.mkdir(exist_ok=True)
-        (prepare if request["phase"] == "prepare" else publish)(request, assets)
+        if request["phase"] == "verify":
+            verify(request)
+        else:
+            (prepare if request["phase"] == "prepare" else publish)(request, assets)
     else:
         raise ValueError("Unknown operation")
