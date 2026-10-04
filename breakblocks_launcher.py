@@ -2444,9 +2444,7 @@ class Launcher(ctk.CTk):
             pass
 
     def write_chat_game_processes(self):
-        """Share only Minecraft process IDs with the Windows chat helper."""
-        if os.name != "nt":
-            return
+        """Share Minecraft process IDs with the native chat overlay."""
         self.chat_game_file.parent.mkdir(parents=True, exist_ok=True)
         temporary = self.chat_game_file.with_name(f".{self.chat_game_file.name}.{os.getpid()}.tmp")
         temporary.write_text(
@@ -2457,7 +2455,7 @@ class Launcher(ctk.CTk):
     def mark_instance_running(self, ident, started, pid=None):
         self.launching_instances.discard(ident)
         self.running_instances[ident] = started
-        if os.name == "nt" and pid is not None:
+        if pid is not None:
             self.overlay_game_pids[ident] = pid
             self.write_chat_game_processes()
             log_launcher_message("Chat overlay", f"Minecraft started with PID {pid}")
@@ -2493,7 +2491,7 @@ class Launcher(ctk.CTk):
 
     def finish_instance_session(self, ident, elapsed, exit_code=0, crash_report=None):
         self.running_instances.pop(ident, None)
-        if os.name == "nt" and self.overlay_game_pids.pop(ident, None) is not None:
+        if self.overlay_game_pids.pop(ident, None) is not None:
             self.write_chat_game_processes()
         self.launching_instances.discard(ident)
         self.refresh_instances()
@@ -3326,7 +3324,7 @@ class Launcher(ctk.CTk):
         # The cleaned system environment is for external programs such as Java.
         environment = os.environ.copy()
         if sys.platform.startswith("linux"):
-            environment.setdefault("QT_QPA_PLATFORM", "xcb")
+            environment["QT_QPA_PLATFORM"] = "xcb"
         creation_flags = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
         try:
             self.chat_browser_process = subprocess.Popen(

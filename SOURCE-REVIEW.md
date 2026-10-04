@@ -1,6 +1,6 @@
 # BreakBlocks Launcher source review
 
-Version: **0.9.29 Alpha**
+Version: **0.9.30 Alpha**
 
 Windows, Ubuntu and Steam Deck share one source tree. Both source archives
 contain the complete code, assets, tests, licence files and packaging scripts.
@@ -17,7 +17,8 @@ Start with `BUILD-WINDOWS.md` or `BUILD-LINUX.md` for the platform being reviewe
 | `modrinth_client.py`, `mod_sources.py` | Mod browsing, installation and updates |
 | `launcher_update.py`, `app_config.py` | Product metadata and verified launcher updates |
 | `chat_browser.py` | Embedded BreakBlocks chat and local browser profile |
-| `windows_chat_overlay.py` | Windows game-chat overlay |
+| `windows_chat_overlay.py`, `linux_chat_overlay.py` | Native game-chat overlays |
+| `x11_windows.py` | Linux window attachment, focus and game-scoped shortcuts |
 | `display_environment.py`, `process_environment.py` | Desktop scaling, fonts and system programs |
 | `packaging/`, `BreakBlocksLauncher.spec` | Windows, Ubuntu and portable Linux builds |
 | `tests/` | Regression checks |
@@ -35,7 +36,7 @@ use a client secret.
 source. The remaining operator and website-policy questions are recorded in
 `LEGAL-RELEASE-CHECKLIST.md` and `WEBSITE-LEGAL-CHANGES.md` for Sheepy's review.
 
-The 0.9.29 settings and startup flow live in `launcher_preferences.py`,
+The 0.9.30 settings and startup flow live in `launcher_preferences.py`,
 `settings_panel.py` and `startup_updates.py`. `tests/test_launcher_preferences.py`
 covers persistence, cleanup boundaries, retention, launch options and read-only
 update checks. Chat starts without switching away from the Launcher page.

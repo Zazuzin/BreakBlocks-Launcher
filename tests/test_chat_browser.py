@@ -3,6 +3,7 @@ import ctypes
 import inspect
 import io
 import os
+import sys
 import tempfile
 from pathlib import Path
 from types import SimpleNamespace
@@ -290,6 +291,52 @@ def test_chat_child_keeps_the_packaged_runtime_environment():
         breakblocks_launcher.Launcher.ensure_chat_browser(launcher)
     for key, value in paths.items():
         assert spawn.call_args.kwargs["env"][key] == value
+
+
+def test_linux_chat_uses_x11_even_when_the_desktop_prefers_wayland():
+    launcher = SimpleNamespace(
+        closing=False,
+        chat_browser_process=None,
+        chat_browser_monitor_id=None,
+        chat_browser_retry_button=SimpleNamespace(pack_forget=lambda: None),
+        chat_browser_status=SimpleNamespace(set=lambda _message: None),
+        chat_browser_host=SimpleNamespace(winfo_id=lambda: 123),
+        chat_browser_command=lambda _handle: ["launcher", "--chat-browser"],
+        update_idletasks=lambda: None,
+        after=lambda _delay, _callback: 1,
+        monitor_chat_browser=lambda: None,
+    )
+    with (
+        mock.patch.dict(os.environ, {"QT_QPA_PLATFORM": "wayland"}),
+        mock.patch.object(sys, "platform", "linux"),
+        mock.patch.object(breakblocks_launcher.subprocess, "Popen") as spawn,
+    ):
+        breakblocks_launcher.Launcher.ensure_chat_browser(launcher)
+    assert spawn.call_args.kwargs["env"]["QT_QPA_PLATFORM"] == "xcb"
+
+
+def test_linux_game_processes_reach_the_overlay():
+    with tempfile.TemporaryDirectory() as temporary:
+        launcher = SimpleNamespace(
+            launching_instances={"example"},
+            running_instances={},
+            overlay_game_pids={},
+            chat_game_file=Path(temporary) / "game-pids",
+            refresh_instances=lambda: None,
+            store=SimpleNamespace(data={"settings": {"keep_launcher_open": True}}),
+            ensure_chat_browser=mock.Mock(),
+        )
+        launcher.write_chat_game_processes = (
+            lambda: breakblocks_launcher.Launcher.write_chat_game_processes(launcher)
+        )
+        with mock.patch.object(breakblocks_launcher, "log_launcher_message"):
+            breakblocks_launcher.Launcher.mark_instance_running(launcher, "example", 123.0, 456)
+        assert launcher.chat_game_file.read_text(encoding="ascii") == "456\n"
+        assert launcher.running_instances == {"example": 123.0}
+        launcher.ensure_chat_browser.assert_called_once()
+        launcher.overlay_game_pids.clear()
+        launcher.write_chat_game_processes()
+        assert launcher.chat_game_file.read_text(encoding="ascii") == ""
 
 
 def test_chat_process_failure_displays_an_error_and_reload_control():

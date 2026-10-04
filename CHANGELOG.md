@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.30 Alpha (Windows and Linux)
+
+- Keep Linux web chat on the X11 backend used by the launcher, including when the desktop prefers Wayland.
+- Attach chat before showing it, resize the Qt view as well as its native window, and recover detached or covered chat surfaces.
+- Add a Linux X11 chat overlay using the existing signed-in session, with a game-scoped shortcut, Escape, custom shortcuts and text size.
+- Share launched Minecraft process IDs on Linux and show overlay controls on both desktop platforms.
+- Explain Linux overlay requirements: windowed/borderless Minecraft using X11/XWayland; native Wayland games and Steam Deck Gaming Mode are not supported.
+- Check rendered chat, real keyboard shortcuts and input, attachment recovery and packaged startup under a Linux desktop window manager.
+- Log web page loading and renderer failures to make blank-chat reports diagnosable.
+
 ## 0.9.29 Alpha (Windows and Linux)
 
 - Restore hidden or covered embedded Windows chat even when the host size has not changed; clear the loading panel after the current chat helper confirms attachment.

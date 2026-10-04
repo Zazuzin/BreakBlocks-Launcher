@@ -76,7 +76,7 @@ jobs:
       - name: Install Tk and build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes python3-tk
+          sudo apt-get install --yes python3-tk xvfb xauth openbox libxtst6 libegl1 libopengl0 libpulse0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0
           python -m pip install -r requirements-dev.txt
       - name: Verify release metadata
         run: |
@@ -114,6 +114,11 @@ jobs:
         run: |
           ./packaging/linux/build-deb.sh
           cp "dist-release/BreakBlocks-Launcher-${VERSION}-Ubuntu-amd64.deb" .
+      - name: Check Linux desktop chat and overlay
+        env:
+          PYTHONPATH: .
+          QTWEBENGINE_DISABLE_SANDBOX: "1"
+        run: xvfb-run -a python tools/check_linux_desktop.py "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
       - uses: actions/upload-artifact@v4
         with:
           name: linux-package

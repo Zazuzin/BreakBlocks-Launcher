@@ -319,30 +319,35 @@ def build(launcher, page, colors):
         ["3", "5", "10"],
     )
 
-    if launcher.platform_is_windows:
-        card = launcher.settings_card(
-            content,
-            "Windows chat overlay",
-            "Show the existing chat over Minecraft sessions started by this launcher.",
-            7,
-        )
-        switch(card, "Enable the in-game chat overlay", launcher.preference_vars["overlay_enabled"])
-        field = ctk.CTkFrame(card, fg_color="transparent")
-        field.pack(fill="x", padx=20, pady=8)
-        launcher._settings_entry(
-            field,
-            "OVERLAY HOTKEY",
-            launcher.preference_vars["overlay_hotkey"],
-            0,
-            0,
-            placeholder="Ctrl+Shift+F9",
-        )
-        option(
-            card,
-            "Overlay text size (%)",
-            launcher.preference_vars["overlay_text_scale"],
-            ["80", "100", "125", "150", "200"],
-        )
+    card = launcher.settings_card(
+        content,
+        "In-game chat overlay",
+        "Show chat over windowed or borderless Minecraft started by this launcher."
+        + (
+            ""
+            if launcher.platform_is_windows
+            else " Linux requires X11/XWayland; use Ubuntu on Xorg if the shortcut does not respond."
+            " Steam Deck Gaming Mode is not supported."
+        ),
+        7,
+    )
+    switch(card, "Enable the in-game chat overlay", launcher.preference_vars["overlay_enabled"])
+    field = ctk.CTkFrame(card, fg_color="transparent")
+    field.pack(fill="x", padx=20, pady=8)
+    launcher._settings_entry(
+        field,
+        "OVERLAY HOTKEY",
+        launcher.preference_vars["overlay_hotkey"],
+        0,
+        0,
+        placeholder="Ctrl+Shift+F9",
+    )
+    option(
+        card,
+        "Overlay text size (%)",
+        launcher.preference_vars["overlay_text_scale"],
+        ["80", "100", "125", "150", "200"],
+    )
 
     card = launcher.settings_card(
         content, "Advanced", "Custom JVM options and Minecraft download controls.", 8

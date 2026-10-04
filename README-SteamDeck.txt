@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.29 Alpha - Steam Deck x86_64
+BreakBlocks Launcher 0.9.30 Alpha - Steam Deck x86_64
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -28,8 +28,10 @@ Keep the entire folder together; do not move only the launcher script.
 
 FEATURES
 --------
-The chat and launcher features match the Ubuntu 0.9.29 build. The Windows
-Ctrl+Shift+F9 overlay is currently Windows only.
+The chat and launcher features match the Ubuntu 0.9.30 build. Ctrl+Shift+F9
+opens the chat overlay over windowed/borderless Minecraft using X11/XWayland
+in Desktop Mode. Start Minecraft through this launcher. Native Wayland games
+and Steam Deck Gaming Mode do not support this overlay.
 Its Chat page embeds the authenticated BreakBlocks website and keeps the site
 cookie in a dedicated local profile so users normally remain signed in. Chat
 fills the complete area beside the sidebar, where right-clicking Chat provides
@@ -92,7 +94,7 @@ Duplicate and Export offer an Include worlds and screenshots option. Portable
 instance ZIPs exclude launcher accounts and chat sessions. Importing creates a
 new instance and installs the launch files needed on that computer.
 
-Settings and startup in 0.9.29
+Settings and startup in 0.9.30
 -----------------------------
 Chat starts in the background with your saved website session. The launcher
 checks for launcher and compatible installed-mod updates at startup and shows
@@ -102,6 +104,6 @@ choose; turn automatic checks off under Startup and updates.
 Settings sections cover chat notification volume, duration and privacy,
 interface/text size, backup count and space limits, Minecraft window defaults,
 Java browsing/testing, storage usage/unused archive cleanup, log retention,
-custom JVM options and Minecraft download controls. Windows also has overlay
+custom JVM options and Minecraft download controls. Both desktop builds have overlay
 enablement, hotkey and text-size settings. Save Settings to apply changes.
 Edit Instance -> Window size overrides the global Minecraft window defaults.

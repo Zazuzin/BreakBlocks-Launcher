@@ -223,6 +223,7 @@ def test_nonzero_exit_opens_crash_dialog_while_normal_exit_does_not():
     crash_calls = []
     launcher = SimpleNamespace(
         running_instances={"example": 1},
+        overlay_game_pids={},
         launching_instances={"example"},
         store=SimpleNamespace(
             instances=Path("unused"),
@@ -252,6 +253,7 @@ def test_nonzero_exit_after_orderly_window_close_does_not_open_crash_dialog():
     crash_calls = []
     launcher = SimpleNamespace(
         running_instances={"example": 1},
+        overlay_game_pids={},
         launching_instances={"example"},
         store=SimpleNamespace(
             instances=Path("unused"),

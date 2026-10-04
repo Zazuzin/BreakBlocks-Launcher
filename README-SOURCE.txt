@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.29 Alpha - complete source
+BreakBlocks Launcher 0.9.30 Alpha - complete source
 
 Windows, Ubuntu and Steam Deck use the same launcher code. This package
 includes all modules, assets, fonts, tests, build scripts and licence files.

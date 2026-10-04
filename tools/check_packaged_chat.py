@@ -130,6 +130,31 @@ def check(executable: pathlib.Path) -> None:
                     else:
                         raise AssertionError("Chat did not recover after being hidden and covered")
                     print("Packaged chat recovered from hidden and covered native windows.")
+                elif sys.platform.startswith("linux"):
+                    from x11_windows import X11Windows
+
+                    windows = X11Windows()
+                    try:
+                        child = int(re.search(r"attached child window (\d+)", output)[1])
+                        parent = root.chat_browser_host.winfo_id()
+                        assert windows.parent(child) == parent, "Linux chat became a desktop window"
+                        root.chat_browser_fallback.lift()
+                        assert windows.reparent(child, windows.root)
+                        deadline = time.monotonic() + 3
+                        while time.monotonic() < deadline:
+                            root.update()
+                            if windows.parent(child) == parent:
+                                break
+                            time.sleep(0.05)
+                        else:
+                            raise AssertionError(
+                                "Packaged Linux chat did not repair its attachment"
+                            )
+                        print(
+                            "Packaged Linux chat remained embedded and recovered after detaching."
+                        )
+                    finally:
+                        windows.close()
                 Launcher.monitor_chat_browser(root)
                 root.update()
                 assert (

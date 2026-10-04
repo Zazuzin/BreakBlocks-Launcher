@@ -8,7 +8,7 @@ A Minecraft: Java Edition launcher for the BreakBlocks community. Manage your
 accounts, instances and mods, and stay connected through the built-in
 BreakBlocks chat. Available for Windows, Ubuntu and Steam Deck.
 
-**Current version: 0.9.29 Alpha**
+**Current version: 0.9.30 Alpha**
 
 [Downloads](https://github.com/Zazuzin/BreakBlocks-Launcher/releases) ·
 [Alpha test builds](https://github.com/Zazuzin/BreakBlocks-Launcher/actions/workflows/test-build.yml) ·
@@ -34,7 +34,7 @@ BreakBlocks chat. Available for Windows, Ubuntu and Steam Deck.
 - **Helpful launch errors** — explanations and next steps for common Java,
   dependency, memory and graphics failures, alongside the original report.
 - **Built-in BreakBlocks chat** — loads automatically at startup using your saved website session,
-  with unread counts and configurable notification sound, duration and privacy. On Windows, press **Ctrl+Shift+F9** for the chat overlay
+  with unread counts and configurable notification sound, duration and privacy. On Windows and Linux X11, press **Ctrl+Shift+F9** for the chat overlay
   while playing in a window or borderless mode; **Esc** returns to Minecraft.
   Change the shortcut, text size or disable the overlay in Settings.
 - **Launcher updates** — download, verify and install updates inside the launcher,
@@ -86,7 +86,7 @@ The `.deb` package targets **64-bit Ubuntu 24.04**.
 2. Open a terminal in the folder containing the package and run:
 
    ```bash
-   sudo apt install ./BreakBlocks-Launcher-0.9.29-Ubuntu-amd64.deb
+   sudo apt install ./BreakBlocks-Launcher-0.9.30-Ubuntu-amd64.deb
    ```
 
 3. Open **BreakBlocks Launcher** from your applications menu, or run
@@ -108,7 +108,8 @@ approval prompt to install the new package.
    Game to My Library**, then select the launcher executable.
 
 No system package installation or changes to SteamOS's read-only partition are
-required. The in-game chat overlay is currently available on Windows only.
+required. The Linux chat overlay works with X11/XWayland Minecraft windows in Desktop Mode.
+Native Wayland games and Steam Deck Gaming Mode do not support this overlay.
 
 ## Updating the launcher
 
@@ -153,8 +154,11 @@ A video tutorial is planned. The link will be added here when it is ready.
   launch files, or restore the backup made before a mod or loader change.
 - **Alpha updates do not appear:** select the **Alpha** update channel in
   Settings. Updates become available after a release has been published.
-- **Windows chat overlay:** start Minecraft through this launcher and use
-  windowed or borderless mode, then press **Ctrl+Shift+F9**.
+- **Chat overlay:** start Minecraft through this launcher and use windowed or borderless
+  mode, then press **Ctrl+Shift+F9** (or your saved shortcut). On Linux, Minecraft must
+  use X11/XWayland. If the shortcut does not respond, sign out of Ubuntu, select
+  **Ubuntu on Xorg** using the login screen’s session menu, and sign back in.
+  Native Wayland games and Steam Deck Gaming Mode are not supported.
 - **Reporting a bug:** include your launcher version, operating system,
   Minecraft version, loader and steps to reproduce it in a
   [GitHub issue](https://github.com/Zazuzin/BreakBlocks-Launcher/issues), or

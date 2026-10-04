@@ -51,7 +51,7 @@ jobs:
       - name: Install Tk and build dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install --yes python3-tk xvfb xauth libegl1 libopengl0 libpulse0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0
+          sudo apt-get install --yes python3-tk xvfb xauth openbox libxtst6 libegl1 libopengl0 libpulse0 libxkbcommon-x11-0 libxcb-cursor0 libxcb-icccm4 libxcb-keysyms1 libxcb-shape0
           python -m pip install -r requirements-dev.txt
       - name: Read version
         run: echo "VERSION=$(python -c 'from app_config import APP_VERSION_NUMBER; print(APP_VERSION_NUMBER)')" >> "$GITHUB_ENV"
@@ -82,7 +82,7 @@ jobs:
         env:
           PYTHONPATH: .
           QTWEBENGINE_DISABLE_SANDBOX: "1"
-        run: xvfb-run -a python tools/check_packaged_chat.py "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
+        run: xvfb-run -a python tools/check_linux_desktop.py "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
       - uses: actions/upload-artifact@v4
         with:
           name: BreakBlocks-Launcher-${{ env.VERSION }}-Linux-test

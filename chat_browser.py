@@ -255,8 +255,7 @@ class NativeHost:
         self.child_handle = child_handle
         self.qt_view = qt_view
         self._windows_resize_state = None
-        self._display = None
-        self._x11 = None
+        self._x11_windows = None
 
     def attach(self) -> None:
         if os.name == "nt":
@@ -428,85 +427,41 @@ class NativeHost:
         return moved
 
     def _attach_x11(self) -> None:
-        self._x11 = ctypes.cdll.LoadLibrary("libX11.so.6")
-        self._x11.XOpenDisplay.argtypes = (ctypes.c_char_p,)
-        self._x11.XOpenDisplay.restype = ctypes.c_void_p
-        self._x11.XReparentWindow.argtypes = (
-            ctypes.c_void_p,
-            ctypes.c_ulong,
-            ctypes.c_ulong,
-            ctypes.c_int,
-            ctypes.c_int,
-        )
-        self._x11.XMapWindow.argtypes = (ctypes.c_void_p, ctypes.c_ulong)
-        self._x11.XMoveResizeWindow.argtypes = (
-            ctypes.c_void_p,
-            ctypes.c_ulong,
-            ctypes.c_int,
-            ctypes.c_int,
-            ctypes.c_uint,
-            ctypes.c_uint,
-        )
-        self._x11.XGetGeometry.argtypes = (
-            ctypes.c_void_p,
-            ctypes.c_ulong,
-            ctypes.POINTER(ctypes.c_ulong),
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.POINTER(ctypes.c_int),
-            ctypes.POINTER(ctypes.c_uint),
-            ctypes.POINTER(ctypes.c_uint),
-            ctypes.POINTER(ctypes.c_uint),
-            ctypes.POINTER(ctypes.c_uint),
-        )
-        self._x11.XGetGeometry.restype = ctypes.c_int
-        self._x11.XFlush.argtypes = (ctypes.c_void_p,)
-        self._display = self._x11.XOpenDisplay(None)
-        if not self._display:
-            raise RuntimeError("Could not open the X11 display for embedded web chat")
-        self._x11.XReparentWindow(
-            self._display,
-            self.child_handle,
-            self.parent_handle,
-            0,
-            0,
-        )
-        self._x11.XMapWindow(self._display, self.child_handle)
-        self._x11.XFlush(self._display)
+        from x11_windows import X11Windows
+
+        self._x11_windows = X11Windows()
+        if not self._embed_x11_child():
+            raise RuntimeError("The launcher chat window could not be embedded on X11")
         self._resize_x11()
 
-    def _resize_x11(self) -> bool:
-        if not self._display or not self._x11:
+    def _embed_x11_child(self) -> bool:
+        windows = self._x11_windows
+        if not windows or windows.bounds(self.parent_handle) is None:
             return False
-        root = ctypes.c_ulong()
-        x = ctypes.c_int()
-        y = ctypes.c_int()
-        width = ctypes.c_uint()
-        height = ctypes.c_uint()
-        border = ctypes.c_uint()
-        depth = ctypes.c_uint()
-        available = self._x11.XGetGeometry(
-            self._display,
-            self.parent_handle,
-            ctypes.byref(root),
-            ctypes.byref(x),
-            ctypes.byref(y),
-            ctypes.byref(width),
-            ctypes.byref(height),
-            ctypes.byref(border),
-            ctypes.byref(depth),
-        )
-        if not available:
-            return False
-        self._x11.XMoveResizeWindow(
-            self._display,
-            self.child_handle,
-            0,
-            0,
-            max(1, width.value),
-            max(1, height.value),
-        )
-        self._x11.XFlush(self._display)
+        if self.qt_view is not None:
+            # Qt may replace its native surface when flags or display state
+            # change. Attach the current surface, rather than a stale XID.
+            self.child_handle = int(self.qt_view.winId())
+        if windows.parent(self.child_handle) != self.parent_handle:
+            return windows.reparent(self.child_handle, self.parent_handle)
         return True
+
+    def _resize_x11(self) -> bool:
+        if not self._embed_x11_child():
+            return False
+        bounds = self._x11_windows.bounds(self.parent_handle)
+        if bounds is None:
+            return False
+        width, height = max(1, bounds[2]), max(1, bounds[3])
+        if self.qt_view is not None:
+            scale = self.qt_view.devicePixelRatioF()
+            self.qt_view.resize(max(1, round(width / scale)), max(1, round(height / scale)))
+        return self._x11_windows.show_and_resize(self.child_handle, width, height)
+
+    def close(self):
+        if self._x11_windows is not None:
+            self._x11_windows.close()
+            self._x11_windows = None
 
 
 def run_browser(
@@ -521,7 +476,7 @@ def run_browser(
     if sys.platform.startswith("linux"):
         # Tk runs through X11/XWayland.  Matching that backend permits the Qt
         # window to become a real child of the Tk Chat host under Wayland too.
-        os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
+        os.environ["QT_QPA_PLATFORM"] = "xcb"
 
     from PySide6.QtCore import QObject, QPoint, Qt, QTimer, QUrl, Signal
     from PySide6.QtGui import QCursor, QMouseEvent, QPixmap
@@ -781,18 +736,43 @@ def run_browser(
 
     view = QWebEngineView()
     view.setPage(page)
+    view.loadFinished.connect(
+        lambda success: log_browser_message(f"page load {'completed' if success else 'failed'}")
+    )
+    page.renderProcessTerminated.connect(
+        lambda status, code: log_browser_message(f"web renderer stopped: {status}; code={code}")
+    )
     view.setWindowTitle("BreakBlocks Chat")
     view.setWindowFlag(Qt.FramelessWindowHint, True)
     view.setAttribute(Qt.WA_NativeWindow, True)
     view.resize(900, 600)
-    view.show()
+    if sys.platform.startswith("linux"):
+        view.setWindowFlag(Qt.BypassWindowManagerHint, True)
+    view.winId()
+    if os.name == "nt":
+        view.show()
 
     host = NativeHost(parent_handle, int(view.winId()), qt_view=view)
     host.attach()
+    if sys.platform.startswith("linux"):
+        view.show()
+        if not host.resize():
+            raise RuntimeError("The Linux chat window did not remain inside the launcher")
     if os.name == "nt":
         from windows_chat_overlay import WindowsChatOverlay
 
         overlay = WindowsChatOverlay(
+            application,
+            host,
+            parent_handle,
+            game_process_file,
+            overlay_visible_file,
+            lambda: write_unread_count(unread_file, 0),
+        )
+    elif sys.platform.startswith("linux"):
+        from linux_chat_overlay import LinuxChatOverlay
+
+        overlay = LinuxChatOverlay(
             application,
             host,
             parent_handle,
@@ -860,6 +840,7 @@ def run_browser(
     return_code = application.exec()
     if overlay is not None:
         overlay.shutdown()
+    host.close()
     log_browser_message(f"event loop stopped with exit code {return_code}")
     return return_code
 
