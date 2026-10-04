@@ -33,6 +33,11 @@ jobs:
           if (-not (Test-Path -LiteralPath "dist\BreakBlocks-Launcher\BreakBlocks Launcher.exe")) {
             throw "The Windows executable is missing from the build."
           }
+      - name: Check packaged chat startup
+        shell: pwsh
+        env:
+          PYTHONPATH: .
+        run: python tools/check_packaged_chat.py "dist/BreakBlocks-Launcher/BreakBlocks Launcher.exe"
       - uses: actions/upload-artifact@v4
         with:
           name: BreakBlocks-Launcher-${{ env.VERSION }}-Windows-test
