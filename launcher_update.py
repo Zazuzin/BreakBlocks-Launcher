@@ -79,13 +79,19 @@ def current_platform_key() -> str:
     return f"{sys.platform}-{architecture}"
 
 
+def _packaged_root(app_directory: pathlib.Path) -> pathlib.Path | None:
+    """Resolve modern frozen bundles and the older app-directory layout."""
+    if getattr(sys, "frozen", False):
+        return pathlib.Path(sys.executable).resolve().parent
+    app_directory = app_directory.resolve()
+    return app_directory.parent if app_directory.name == "app" else None
+
+
 def detect_install_type(app_directory: pathlib.Path) -> str:
     """Identify how this launcher copy must be updated."""
-    app_directory = app_directory.resolve()
-    if app_directory.name != "app":
+    install_root = _packaged_root(app_directory)
+    if install_root is None:
         return INSTALL_SOURCE
-
-    install_root = app_directory.parent
     if os.name == "nt" and (install_root / "BreakBlocks Launcher.exe").is_file():
         return INSTALL_WINDOWS_PORTABLE
     if sys.platform.startswith("linux"):
@@ -118,11 +124,8 @@ def platform_key_for_install_type(install_type: str) -> str:
 
 def detect_install_root(app_directory: pathlib.Path) -> pathlib.Path | None:
     """Locate a packaged launcher root; source checkouts are intentionally ignored."""
-    if getattr(sys, "frozen", False):
-        root = pathlib.Path(sys.executable).resolve().parent
-    elif app_directory.name == "app":
-        root = app_directory.resolve().parent
-    else:
+    root = _packaged_root(app_directory)
+    if root is None:
         return None
 
     launcher_name = "BreakBlocks Launcher.exe" if os.name == "nt" else "BreakBlocks Launcher"
@@ -235,6 +238,17 @@ class UpdateClient:
         if not (payload / launcher_name).is_file():
             raise UpdateError("The update package does not contain the launcher executable")
         return payload
+
+    def stage_for_install(self, archive: pathlib.Path, install_root: pathlib.Path) -> pathlib.Path:
+        """Extract beside the installation so replacement stays on the same drive."""
+        container = pathlib.Path(
+            tempfile.mkdtemp(prefix=".breakblocks-update-", dir=install_root.resolve().parent)
+        )
+        try:
+            return self.stage(archive, container)
+        except Exception:
+            shutil.rmtree(container, ignore_errors=True)
+            raise
 
     def _parse_manifest(
         self,
@@ -358,6 +372,16 @@ class UpdateClient:
             source.extractall(root)  # nosec B202
 
 
+def discard_staged_update(staged_root: pathlib.Path) -> None:
+    """Remove only a temporary directory created for this update."""
+    staged_root = staged_root.resolve()
+    container = staged_root.parent
+    if staged_root.name.startswith(".breakblocks-update-"):
+        container = staged_root
+    if container.name.startswith(".breakblocks-update-"):
+        shutil.rmtree(container, ignore_errors=True)
+
+
 def start_self_update(staged_root: pathlib.Path, install_root: pathlib.Path) -> None:
     """Start an external helper that replaces the package after this process exits."""
     staged_root = staged_root.resolve()
@@ -438,20 +462,38 @@ def _start_windows_update(staged_root: pathlib.Path, install_root: pathlib.Path)
             )
             $ErrorActionPreference = "Stop"
             Wait-Process -Id $LauncherProcessId -ErrorAction SilentlyContinue
-            $backup = "$InstallRoot.previous"
+            $backup = "$InstallRoot.previous-$LauncherProcessId"
             if (Test-Path -LiteralPath $backup) {
-                Remove-Item -LiteralPath $backup -Recurse -Force
+                throw "An earlier update backup already exists: $backup"
             }
+            if (-not (Test-Path -LiteralPath (Join-Path $StagedRoot "BreakBlocks Launcher.exe"))) {
+                throw "The staged launcher executable is missing"
+            }
+            $oldMoved = $false
+            $newMoved = $false
             try {
                 Move-Item -LiteralPath $InstallRoot -Destination $backup
+                $oldMoved = $true
                 Move-Item -LiteralPath $StagedRoot -Destination $InstallRoot
-                Start-Process -FilePath (Join-Path $InstallRoot "BreakBlocks Launcher.exe")
-                Remove-Item -LiteralPath $backup -Recurse -Force
+                $newMoved = $true
+                Start-Process -FilePath (Join-Path $InstallRoot "BreakBlocks Launcher.exe") `
+                    -WorkingDirectory $InstallRoot
             } catch {
-                if ((Test-Path -LiteralPath $backup) -and -not (Test-Path -LiteralPath $InstallRoot)) {
+                if ($oldMoved) {
+                    if ($newMoved) {
+                        Remove-Item -LiteralPath $InstallRoot -Recurse -Force
+                    }
                     Move-Item -LiteralPath $backup -Destination $InstallRoot
+                    Start-Process -FilePath (Join-Path $InstallRoot "BreakBlocks Launcher.exe") `
+                        -WorkingDirectory $InstallRoot
                 }
                 throw
+            }
+            Remove-Item -LiteralPath $backup -Recurse -Force -ErrorAction SilentlyContinue
+            $stagingContainer = Split-Path -Parent $StagedRoot
+            if (((Split-Path -Leaf $stagingContainer) -like ".breakblocks-update-*") `
+                    -and -not (Get-ChildItem -LiteralPath $stagingContainer -Force)) {
+                Remove-Item -LiteralPath $stagingContainer -ErrorAction SilentlyContinue
             }
             Remove-Item -LiteralPath $PSCommandPath -Force -ErrorAction SilentlyContinue
             """).lstrip(),
@@ -477,6 +519,7 @@ def _start_windows_update(staged_root: pathlib.Path, install_root: pathlib.Path)
         ],
         creationflags=creation_flags,
         close_fds=True,
+        cwd=str(script.parent),
         env=system_process_environment(),
     )
 
@@ -491,18 +534,25 @@ def _start_linux_update(staged_root: pathlib.Path, install_root: pathlib.Path) -
             staged_root="$2"
             install_root="$3"
             while kill -0 "$launcher_pid" 2>/dev/null; do sleep 1; done
-            backup="${install_root}.previous"
-            rm -rf -- "$backup"
-            if mv -- "$install_root" "$backup" && mv -- "$staged_root" "$install_root"; then
-                chmod +x "$install_root/BreakBlocks Launcher"
+            backup="${install_root}.previous-${launcher_pid}"
+            test ! -e "$backup"
+            test -f "$staged_root/BreakBlocks Launcher"
+            mv -- "$install_root" "$backup"
+            if mv -- "$staged_root" "$install_root" && chmod +x "$install_root/BreakBlocks Launcher"; then
                 "$install_root/BreakBlocks Launcher" >/dev/null 2>&1 &
-                rm -rf -- "$backup"
+                rm -rf -- "$backup" || true
             else
-                if [ -d "$backup" ] && [ ! -e "$install_root" ]; then
+                if [ -d "$backup" ]; then
+                    rm -rf -- "$install_root"
                     mv -- "$backup" "$install_root"
+                    "$install_root/BreakBlocks Launcher" >/dev/null 2>&1 &
                 fi
                 exit 1
             fi
+            staging_container=$(dirname -- "$staged_root")
+            case "$(basename -- "$staging_container")" in
+                .breakblocks-update-*) rmdir -- "$staging_container" 2>/dev/null || true ;;
+            esac
             rm -f -- "$0"
             """).lstrip(),
         encoding="utf-8",
@@ -512,6 +562,7 @@ def _start_linux_update(staged_root: pathlib.Path, install_root: pathlib.Path) -
         [str(script), str(os.getpid()), str(staged_root), str(install_root)],
         start_new_session=True,
         close_fds=True,
+        cwd=str(script.parent),
         env=system_process_environment(),
     )
 

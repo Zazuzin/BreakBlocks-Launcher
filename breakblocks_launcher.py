@@ -2258,6 +2258,7 @@ class Launcher(ctk.CTk):
         )
         self.available_update = None
         self.update_check_running = False
+        self.update_install_running = False
         self.chat_browser_process = None
         self.chat_browser_monitor_id = None
         self.chat_browser_shutdown_file = None
@@ -2395,6 +2396,9 @@ class Launcher(ctk.CTk):
 
     def close_launcher(self):
         """Close the window while launch watchers finish tracking game time."""
+        if self.update_install_running:
+            self.show_notice("Update in progress", "Wait for the launcher update to finish.")
+            return
         if self.instance_tasks:
             self.show_notice(
                 "Instance task in progress",
@@ -6533,7 +6537,7 @@ class Launcher(ctk.CTk):
         buttons = ctk.CTkFrame(body, fg_color="transparent")
         buttons.pack(fill="x", padx=24, pady=(0, 20))
         buttons.grid_columnconfigure(0, weight=1)
-        ctk.CTkButton(
+        later_button = ctk.CTkButton(
             buttons,
             text="Later",
             command=window.destroy,
@@ -6543,7 +6547,9 @@ class Launcher(ctk.CTk):
             fg_color=CONTROL_SURFACE,
             hover_color=ACCENT_HOVER,
             font=self.font_button,
-        ).grid(row=0, column=1, padx=(0, 8))
+        )
+        later_button.grid(row=0, column=1, padx=(0, 8))
+        window.update_later_button = later_button
         button_text = {
             launcher_update.INSTALL_SOURCE: "Open release page",
             launcher_update.INSTALL_LINUX_DEB: "Download and install",
@@ -6564,11 +6570,38 @@ class Launcher(ctk.CTk):
                 command=lambda: self.open_external_url(update.release_url, "launcher release")
             )
         else:
-            install_button.configure(
-                command=lambda: self.download_launcher_update(update, window, install_button)
-            )
+
+            def begin_update():
+                self.download_launcher_update(update, window, install_button)
+                if self.update_install_running:
+                    later_button.configure(state="disabled")
+
+            install_button.configure(command=begin_update)
+
+        def close_dialog():
+            if self.update_install_running:
+                self.show_notice("Update in progress", "Wait for the launcher update to finish.")
+            else:
+                window.destroy()
+
+        window.protocol("WM_DELETE_WINDOW", close_dialog)
 
     def download_launcher_update(self, update, dialog, button):
+        if self.update_install_running:
+            self.show_notice("Update in progress", "A launcher update is already running.")
+            return
+        if (
+            self.running_instances
+            or self.launching_instances
+            or self.active_installs
+            or self.instance_tasks
+        ):
+            self.show_notice(
+                "Finish Minecraft tasks first",
+                "Close Minecraft and wait for installations, backups or transfers to finish before updating.",
+            )
+            return
+        self.update_install_running = True
         button.configure(state="disabled", text="Downloading…")
         updates_root = self.store.root / "updates" / update.version
 
@@ -6584,12 +6617,25 @@ class Launcher(ctk.CTk):
             try:
                 archive = self.update_client.download(update, updates_root, progress)
                 if self.update_install_type == launcher_update.INSTALL_LINUX_DEB:
+                    if (
+                        self.running_instances
+                        or self.launching_instances
+                        or self.active_installs
+                        or self.instance_tasks
+                    ):
+                        raise launcher_update.UpdateError(
+                            "Close Minecraft and wait for instance tasks to finish, then try the update again."
+                        )
                     progress(100, "Waiting for administrator approval")
                     launcher_update.install_debian_update(archive)
                     self.post_ui(lambda: self.finish_debian_update(update, dialog, button))
                     return
-                staged = self.update_client.stage(archive, updates_root / "staged")
                 install_root = launcher_update.detect_install_root(APP_DIR)
+                if install_root is None:
+                    raise launcher_update.UpdateError(
+                        "The installed launcher folder could not be found."
+                    )
+                staged = self.update_client.stage_for_install(archive, install_root)
                 self.post_ui(
                     lambda: self.finish_update_download(
                         update,
@@ -6608,6 +6654,7 @@ class Launcher(ctk.CTk):
 
     def finish_debian_update(self, update, dialog, button):
         del button
+        self.update_install_running = False
         if dialog.winfo_exists():
             dialog.destroy()
         self.status.set(f"Installed {update.display_version} — restarting…")
@@ -6624,31 +6671,44 @@ class Launcher(ctk.CTk):
         self.after(150, self.close_launcher)
 
     def finish_update_download(self, update, staged, install_root, dialog, button):
-        if install_root is None:
-            button.configure(state="normal", text="Open release page")
-            button.configure(
-                command=lambda: self.open_external_url(update.release_url, "launcher release")
+        if (
+            self.running_instances
+            or self.launching_instances
+            or self.active_installs
+            or self.instance_tasks
+        ):
+            launcher_update.discard_staged_update(staged)
+            self.fail_update_download(
+                "Close Minecraft and wait for instance tasks to finish, then try the update again.",
+                dialog,
+                button,
             )
-            self.status.set("Update verified — source mode requires a manual install")
-            self.show_notice(
-                "Update verified",
-                "This copy is running from source, so it cannot replace itself. "
-                "Use the release page to install the packaged update.",
+            return
+        if install_root is None:
+            launcher_update.discard_staged_update(staged)
+            self.fail_update_download(
+                "The installed launcher folder could not be found.", dialog, button
             )
             return
         try:
             launcher_update.start_self_update(staged, install_root)
         except Exception as error:
+            launcher_update.discard_staged_update(staged)
             self.fail_update_download(str(error), dialog, button)
             return
         if dialog.winfo_exists():
             dialog.destroy()
+        self.update_install_running = False
         self.status.set("Restarting to install the update…")
         self.after(100, self.close_launcher)
 
     def fail_update_download(self, detail, dialog, button):
+        self.update_install_running = False
         if dialog.winfo_exists():
             button.configure(state="normal", text="Try again")
+            later_button = getattr(dialog, "update_later_button", None)
+            if later_button is not None:
+                later_button.configure(state="normal")
         self.status.set("Launcher update failed")
         self.show_notice("Update failed", detail, danger=True)
 

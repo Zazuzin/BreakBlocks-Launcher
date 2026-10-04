@@ -28,6 +28,7 @@ $env:PYTHONPATH = $ProjectRoot
     "tests/test_launcher_paths.py",
     "tests/test_minecraft_launch.py",
     "tests/test_launcher_preferences.py"
+    "tests/test_launcher_updater.py"
 ) | ForEach-Object {
     & $Python $_
     if ($LASTEXITCODE) { exit $LASTEXITCODE }

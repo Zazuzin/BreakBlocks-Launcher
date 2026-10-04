@@ -8,7 +8,7 @@ A Minecraft: Java Edition launcher for the BreakBlocks community. Manage your
 accounts, instances and mods, and stay connected through the built-in
 BreakBlocks chat. Available for Windows, Ubuntu and Steam Deck.
 
-**Current version: 0.9.27 Alpha**
+**Current version: 0.9.28 Alpha**
 
 [Downloads](https://github.com/Zazuzin/BreakBlocks-Launcher/releases) ·
 [Alpha test builds](https://github.com/Zazuzin/BreakBlocks-Launcher/actions/workflows/test-build.yml) ·
@@ -37,8 +37,8 @@ BreakBlocks chat. Available for Windows, Ubuntu and Steam Deck.
   with unread counts and configurable notification sound, duration and privacy. On Windows, press **Ctrl+Shift+F9** for the chat overlay
   while playing in a window or borderless mode; **Esc** returns to Minecraft.
   Change the shortcut, text size or disable the overlay in Settings.
-- **Launcher updates** — verified updates for Windows, Ubuntu and portable
-  Linux, with separate Stable and Alpha channels. Startup checks notify you
+- **Launcher updates** — download, verify and install updates inside the launcher,
+  with a restart after installation and separate Stable and Alpha channels. Startup checks notify you
   about launcher and compatible installed-mod updates; choose when to install.
 - **Launcher preferences** — collapsible settings for interface and text size,
   backup and log retention, Java browsing/testing, Minecraft window defaults
@@ -86,7 +86,7 @@ The `.deb` package targets **64-bit Ubuntu 24.04**.
 2. Open a terminal in the folder containing the package and run:
 
    ```bash
-   sudo apt install ./BreakBlocks-Launcher-0.9.27-Ubuntu-amd64.deb
+   sudo apt install ./BreakBlocks-Launcher-0.9.28-Ubuntu-amd64.deb
    ```
 
 3. Open **BreakBlocks Launcher** from your applications menu, or run
@@ -109,6 +109,21 @@ approval prompt to install the new package.
 
 No system package installation or changes to SteamOS's read-only partition are
 required. The in-game chat overlay is currently available on Windows only.
+
+## Updating the launcher
+
+Choose the **Alpha** channel in Settings to receive Alpha releases. When an
+update is available, select **Download and restart** on Windows or portable
+Linux, or **Download and install** on Ubuntu. The launcher downloads the package,
+verifies its size and SHA-256 checksum, installs it and restarts. Ubuntu asks
+for administrator approval. Close Minecraft and finish instance tasks first.
+
+Portable builds through 0.9.27 may open GitHub because of an installation
+detection bug. Install 0.9.28 manually once to fix this; later updates use the
+built-in updater. Extract the complete new portable package into a new folder
+and run it after closing the old launcher. Existing accounts, instances and chat
+sessions remain in the launcher data folder. Source checkouts use the release
+page so updates do not overwrite development files.
 
 ## Backups and moving instances
 

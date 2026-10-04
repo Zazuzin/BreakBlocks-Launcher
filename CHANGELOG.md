@@ -1,5 +1,13 @@
 # Changelog
 
+## 0.9.28 Alpha (Windows and Linux)
+
+- Fix packaged Windows and portable Linux launches being mistaken for source copies. Their update button now downloads, verifies, installs and restarts inside the launcher.
+- Stage portable updates beside the installation so replacement works when the launcher and user data are on different drives.
+- Run replacement helpers outside the installation folder; restore the previous Windows build if replacement or restart fails.
+- Prevent duplicate updates and closing during a download. Ask users to finish Minecraft sessions and instance tasks before updating.
+- Affected 0.9.27 and earlier portable builds need one manual installation of this fix. Future packaged updates use the built-in updater. Ubuntu continues to use its administrator approval prompt.
+
 ## 0.9.27 Alpha (Windows and Linux)
 
 - Start web chat in the background when the launcher opens and reuse the saved website session.
