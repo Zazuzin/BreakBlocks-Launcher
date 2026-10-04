@@ -112,13 +112,6 @@ def check(executable: pathlib.Path) -> None:
                     root.chat_browser_process.wait(timeout=5)
 
 
-if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("executable", type=pathlib.Path)
-    options = parser.parse_args()
-    check(options.executable.resolve(strict=True))
-
-
 def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> None:
     """Start the real frozen parent so its bootloader environment reaches chat."""
     data = (
@@ -192,3 +185,10 @@ def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> No
         except subprocess.TimeoutExpired:
             process.kill()
             process.wait(timeout=5)
+
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser()
+    parser.add_argument("executable", type=pathlib.Path)
+    options = parser.parse_args()
+    check(options.executable.resolve(strict=True))
