@@ -284,7 +284,7 @@ class ModManager:
             record.update(expected)
         return changed
 
-    def sync_local_inventory(self):
+    def sync_local_inventory(self, persist=True):
         manifest = self.load_manifest()
         records = manifest["mods"]
         changed = False
@@ -410,7 +410,7 @@ class ModManager:
             if record.get("filename") not in present:
                 del records[record_id]
                 changed = True
-        if changed:
+        if changed and persist:
             self.save_manifest(manifest)
         return manifest
 
@@ -927,9 +927,9 @@ class ModManager:
         self.save_manifest(manifest)
         return record
 
-    def check_updates(self):
+    def check_updates(self, read_only=False):
         updates = []
-        manifest = self.sync_local_inventory()
+        manifest = self.sync_local_inventory(persist=not read_only)
         changed = False
         records = list(manifest["mods"].items())
         total = max(1, len(records))
@@ -964,7 +964,7 @@ class ModManager:
                 item_record = copy.deepcopy(record)
                 item_record["record_id"] = record_id
                 updates.append({"record": item_record, "version": latest, "provider": provider})
-        if changed:
+        if changed and not read_only:
             self.save_manifest(manifest)
         self.progress(100, "Update check complete")
         return updates

@@ -8,7 +8,7 @@ A Minecraft: Java Edition launcher for the BreakBlocks community. Manage your
 accounts, instances and mods, and stay connected through the built-in
 BreakBlocks chat. Available for Windows, Ubuntu and Steam Deck.
 
-**Current version: 0.9.26 Alpha**
+**Current version: 0.9.27 Alpha**
 
 [Downloads](https://github.com/Zazuzin/BreakBlocks-Launcher/releases) ·
 [Alpha test builds](https://github.com/Zazuzin/BreakBlocks-Launcher/actions/workflows/test-build.yml) ·
@@ -26,18 +26,24 @@ BreakBlocks chat. Available for Windows, Ubuntu and Steam Deck.
 - **BreakBlocks Essentials** — optional installation of Meteor Client,
   Trouser Streak, Zazu's Server Seeker and Fabric API for Fabric instances.
 - **Backups and restore** — automatic snapshots before mod changes and loader
-  changes, plus manual backups. The five newest snapshots are kept per
-  instance; restoring leaves your worlds untouched.
+  changes, plus manual backups. Choose backup retention and a per-instance storage limit in Settings;
+  restoring leaves your worlds untouched.
 - **Duplicate, export and import** — copy a setup for testing or transfer it
   between computers. Include worlds and screenshots if you want them.
   Launcher account credentials and chat sessions are excluded.
 - **Helpful launch errors** — explanations and next steps for common Java,
   dependency, memory and graphics failures, alongside the original report.
-- **Built-in BreakBlocks chat** — persistent website sign-in, unread counts
-  and notifications. On Windows, press **Ctrl+Shift+F9** for the chat overlay
+- **Built-in BreakBlocks chat** — loads automatically at startup using your saved website session,
+  with unread counts and configurable notification sound, duration and privacy. On Windows, press **Ctrl+Shift+F9** for the chat overlay
   while playing in a window or borderless mode; **Esc** returns to Minecraft.
+  Change the shortcut, text size or disable the overlay in Settings.
 - **Launcher updates** — verified updates for Windows, Ubuntu and portable
-  Linux, with separate Stable and Alpha channels.
+  Linux, with separate Stable and Alpha channels. Startup checks notify you
+  about launcher and compatible installed-mod updates; choose when to install.
+- **Launcher preferences** — collapsible settings for interface and text size,
+  backup and log retention, Java browsing/testing, Minecraft window defaults
+  and per-instance window overrides. Inspect storage, clear unused installation
+  archives, and adjust JVM options or Minecraft download controls.
 
 ## Installation
 
@@ -80,7 +86,7 @@ The `.deb` package targets **64-bit Ubuntu 24.04**.
 2. Open a terminal in the folder containing the package and run:
 
    ```bash
-   sudo apt install ./BreakBlocks-Launcher-0.9.26-Ubuntu-amd64.deb
+   sudo apt install ./BreakBlocks-Launcher-0.9.27-Ubuntu-amd64.deb
    ```
 
 3. Open **BreakBlocks Launcher** from your applications menu, or run

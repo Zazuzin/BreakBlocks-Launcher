@@ -12,6 +12,8 @@ import uuid
 import zipfile
 from pathlib import Path, PurePosixPath
 
+import launcher_preferences
+
 FORMAT_VERSION = 1
 BACKUP_LIMIT = 5
 MAX_ARCHIVE_BYTES = 50 * 1024**3
@@ -37,7 +39,16 @@ PORTABLE_PATHS = tuple(
 )
 PERSONAL_PATHS = ("minecraft/saves", "minecraft/screenshots")
 LOADERS = {"Vanilla", "Fabric", "Forge", "NeoForge", "Quilt"}
-METADATA_KEYS = ("name", "version", "loader", "memory", "icon", "essential_mods")
+METADATA_KEYS = (
+    "name",
+    "version",
+    "loader",
+    "memory",
+    "icon",
+    "essential_mods",
+    "window_width",
+    "window_height",
+)
 
 
 class ArchiveError(ValueError):
@@ -68,6 +79,15 @@ def instance_metadata(instance):
         metadata["memory"] = max(1024, min(32768, int(metadata.get("memory", 4096))))
     except (ValueError, TypeError, OverflowError) as error:
         raise ArchiveError("The archive contains an invalid RAM setting.") from error
+    try:
+        dimensions = launcher_preferences.validate(
+            {key: metadata.get(key) or 0 for key in ("window_width", "window_height")}
+        )
+    except ValueError as error:
+        raise ArchiveError("The archive contains an invalid window size.") from error
+    for key in ("window_width", "window_height"):
+        if key in metadata:
+            metadata[key] = dimensions[key] or None
     if not isinstance(metadata.get("icon", "grass_block"), str):
         raise ArchiveError("The archive contains an invalid icon.")
     essentials = metadata.get("essential_mods", [])
@@ -269,6 +289,7 @@ class BackupManager:
         self.root = Path(launcher_root).resolve()
         self.instances = self.root / "instances"
         self.backups = self.root / "backups"
+        self.preferences = launcher_preferences.load(self.root / "launcher.json")
 
     def folder(self, ident):
         instance_directory(self.instances, ident)
@@ -292,8 +313,14 @@ class BackupManager:
         destination = _write_archive(
             root, instance, folder / name, "recovery", reason, False, progress
         )
-        for entry in self.list(instance["id"])[BACKUP_LIMIT:]:
-            entry["path"].unlink(missing_ok=True)
+        used = 0
+        for index, entry in enumerate(self.list(instance["id"])):
+            used += entry["size"]
+            if index and (
+                index >= self.preferences["backup_count"]
+                or used > self.preferences["backup_max_mb"] * 1024 * 1024
+            ):
+                entry["path"].unlink(missing_ok=True)
         return destination
 
     def list(self, ident):

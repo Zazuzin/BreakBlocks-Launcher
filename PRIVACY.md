@@ -1,6 +1,6 @@
 # BreakBlocks Launcher Privacy Notice
 
-Last updated: 3 October 2026
+Last updated: 4 October 2026
 
 This notice applies to the BreakBlocks Launcher desktop application. The
 [BreakBlocks.com Privacy Policy](https://www.breakblocks.com/privacy-policy)
@@ -67,10 +67,15 @@ The launcher opens Patreon, YouTube, GitHub, Discord, BreakBlocks, and other
 external links in your normal browser; the destination website then controls
 its own data collection.
 
+Launcher and installed-mod update checks run automatically at startup by
+default and contact the relevant services listed above. You can disable these
+checks in Settings. Available updates are reported for review and are installed
+only when you choose to install them.
+
 ## BreakBlocks web chat
 
-Opening the Chat page loads `https://irc.breakblocks.com/#/connect` inside an
-embedded browser. BreakBlocks.com handles the login form, account checks, IRC
+Opening the launcher loads `https://irc.breakblocks.com/#/connect` in the background inside an
+embedded browser. Opening the Chat tab displays that existing session. BreakBlocks.com handles the login form, account checks, IRC
 connection, channels, messages, moderation, and server-side retention. The
 launcher does not receive or log the password entered into that website.
 
@@ -85,11 +90,13 @@ web-chat site data.
 
 Local information remains on your device until you remove the relevant profile
 or instance, clear the files, or uninstall the launcher and delete its data
-folder. Each instance retains its three newest launch logs; older launch logs are
-replaced automatically. `launcher.log` remains until you delete it. Downloaded
+folder. Each instance retains its configured number of launch logs (three by default);
+older launch logs are replaced automatically. Optional detailed launch logging
+records launch options with account tokens removed. `launcher.log` remains until you delete it. Downloaded
 game and mod files remain until the related instance or shared data is removed.
-The five newest recovery snapshots are kept for each instance; older snapshots
-are replaced after a successful new backup. Removing an instance also removes
+Recovery snapshots use the configured count and space limits (five snapshots
+and 2 GiB per instance by default). The newest snapshot is always retained;
+older snapshots are removed after a successful new backup. Removing an instance also removes
 its local recovery snapshots. Exported ZIPs remain wherever you saved them
 until you delete them.
 
@@ -120,7 +127,8 @@ if you are below the age allowed by the service.
 ## Your choices and rights
 
 You can remove launcher profiles and instances through the interface, disable
-automatic update checks, choose not to open web chat, sign out through the
+automatic launcher and mod update checks, hide chat notification previews,
+sign out through the
 website, and delete remaining local files from the data folder. For information
 held by Microsoft, GitHub, Modrinth, or another third party, contact that
 service directly.

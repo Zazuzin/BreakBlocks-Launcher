@@ -42,15 +42,17 @@ from PIL import Image, ImageDraw, ImageTk
 import chat_browser
 import instance_archives
 import launch_diagnostics
+import launcher_preferences
 import launcher_update
 import minecraft_backend
 import modrinth_client
+import settings_panel
+import startup_updates
 from app_config import (
     APP_NAME,
     APP_USER_AGENT,
     APP_VERSION,
     DEFAULT_UPDATE_CHANNEL,
-    UPDATE_CHANNELS,
 )
 from launcher_paths import launcher_data_root, migrate_account_skin
 from process_environment import open_system_target, system_process_environment
@@ -489,6 +491,14 @@ class LauncherDashboardCanvas(tk.Canvas):
     def _font(self, size, weight=None):
         if sys.platform.startswith("linux") and size <= 10:
             size = max(10, size + 1)
+        size = max(
+            8,
+            round(
+                size
+                * getattr(self.launcher, "display_scale", 1)
+                * getattr(self.launcher, "text_scale", 1)
+            ),
+        )
         return (self.launcher.ui_font, size, weight) if weight else (self.launcher.ui_font, size)
 
     def _rounded_rectangle(self, x1, y1, x2, y2, radius, **kwargs):
@@ -575,12 +585,20 @@ class LauncherDashboardCanvas(tk.Canvas):
         normal_fill = fill if enabled else "#373737"
         color = text_color if enabled else "#777777"
         shape = self._button_rectangle(x1, y1, x2, y2, 8, fill=normal_fill, outline="")
+        font = self._font(font_size, "bold")
+        try:
+            measured = tkfont.Font(root=self, font=font).measure(text)
+            available = max(1, (x2 - x1 - 10) * getattr(self.launcher, "display_scale", 1))
+            if measured > available:
+                font = (font[0], max(8, int(font[1] * available / measured)), "bold")
+        except (AttributeError, tk.TclError):
+            pass
         self.create_text(
             (x1 + x2) / 2,
             (y1 + y2) / 2,
             text=text,
             fill=color,
-            font=self._font(font_size, "bold"),
+            font=font,
         )
         if enabled and callback is not None:
             self._register_hit((x1, y1, x2, y2), callback, shape, normal_fill, hover)
@@ -595,7 +613,14 @@ class LauncherDashboardCanvas(tk.Canvas):
             font=self._font(font_size, "bold"),
         )
 
+    def _canvas_point(self, x, y):
+        try:
+            return self.canvasx(x), self.canvasy(y)
+        except (AttributeError, tk.TclError):
+            return x, y
+
     def _hit_at(self, x, y):
+        x, y = self._canvas_point(x, y)
         for region in reversed(self._hit_regions):
             x1, y1, x2, y2 = region["bounds"]
             if x1 <= x <= x2 and y1 <= y <= y2:
@@ -627,11 +652,9 @@ class LauncherDashboardCanvas(tk.Canvas):
         self._set_hover(None)
 
     def _on_button_press(self, event):
+        x, y = self._canvas_point(event.x, event.y)
         for key, region in self._scroll_regions.items():
-            if (
-                region["track_x1"] <= event.x <= region["track_x2"]
-                and region["y1"] <= event.y <= region["y2"]
-            ):
+            if region["track_x1"] <= x <= region["track_x2"] and region["y1"] <= y <= region["y2"]:
                 self._scroll_drag = key
                 self._set_scroll_from_y(key, event.y)
                 return "break"
@@ -677,6 +700,7 @@ class LauncherDashboardCanvas(tk.Canvas):
         return None
 
     def _scroll_at(self, x, y, direction):
+        x, y = self._canvas_point(x, y)
         for key, region in self._scroll_regions.items():
             if region["x1"] <= x <= region["x2"] and region["y1"] <= y <= region["y2"]:
                 maximum = max(0, region["total"] - region["visible"])
@@ -688,6 +712,7 @@ class LauncherDashboardCanvas(tk.Canvas):
         return None
 
     def _set_scroll_from_y(self, key, y):
+        _, y = self._canvas_point(0, y)
         region = self._scroll_regions.get(key)
         if not region:
             return
@@ -747,6 +772,8 @@ class LauncherDashboardCanvas(tk.Canvas):
     def _photo_from_path(self, path, size, skin_head=False):
         if not path:
             return None
+        scale = getattr(self.launcher, "display_scale", 1)
+        size = tuple(max(1, round(dimension * scale)) for dimension in size)
         try:
             source = pathlib.Path(path)
             stamp = source.stat().st_mtime_ns
@@ -793,8 +820,9 @@ class LauncherDashboardCanvas(tk.Canvas):
                 return
         except tk.TclError:
             return
-        width = max(845 + 24, self.winfo_width())
-        height = max(500, self.winfo_height())
+        scale = getattr(self.launcher, "display_scale", 1)
+        width = max(845 + 24, int(self.winfo_width() / scale))
+        height = max(500, int(self.winfo_height() / scale))
         self.delete("all")
         self._hit_regions = []
         self._hover_region = None
@@ -813,6 +841,24 @@ class LauncherDashboardCanvas(tk.Canvas):
         self._draw_instances_card(left_x1, launch_height + gap, left_x2, height)
         self._draw_accounts_card("microsoft", microsoft_x1, 0, microsoft_x2, height)
         self._draw_accounts_card("offline", offline_x1, 0, offline_x2, height)
+
+        self.scale("all", 0, 0, scale, scale)
+        for region in self._hit_regions:
+            region["bounds"] = tuple(value * scale for value in region["bounds"])
+        for region in self._scroll_regions.values():
+            for key in ("x1", "x2", "y1", "y2", "track_x1", "track_x2"):
+                region[key] *= scale
+        self.configure(scrollregion=(0, 0, width * scale, height * scale))
+        for name, needed in (
+            ("dashboard_xscroll", width * scale > self.winfo_width() + 1),
+            ("dashboard_yscroll", height * scale > self.winfo_height() + 1),
+        ):
+            scrollbar = getattr(self.launcher, name, None)
+            if scrollbar is not None:
+                if needed:
+                    scrollbar.grid()
+                else:
+                    scrollbar.grid_remove()
 
     def _draw_launch_card(self, x1, y1, x2, y2):
         launcher = self.launcher
@@ -1977,6 +2023,7 @@ class Store:
         "last_update_check": 0,
         "chat_browser_defaults_version": 1,
         "legal_notice_version": 0,
+        **launcher_preferences.DEFAULTS,
     }
 
     def __init__(self):
@@ -2005,6 +2052,7 @@ class Store:
         migrate_chat_browser = settings.get("chat_browser_defaults_version") != 1
         for key, value in self.DEFAULT_SETTINGS.items():
             settings.setdefault(key, value)
+        settings.update(launcher_preferences.normalized(settings))
         migrated = False
         if migrate_chat_browser:
             for obsolete_key in (
@@ -2169,6 +2217,17 @@ class Launcher(ctk.CTk):
         self.font_small = ctk.CTkFont(self.ui_font, 11 + linux_font_adjustment)
         self.font_button = ctk.CTkFont(self.ui_font, 12 + linux_font_adjustment, "bold")
 
+        self.platform_is_windows = os.name == "nt"
+        self.font_base_sizes = {
+            "font_title": 28,
+            "font_heading": 19,
+            "font_body": 13 + linux_font_adjustment,
+            "font_small": 11 + linux_font_adjustment,
+            "font_button": 12 + linux_font_adjustment,
+        }
+        self.apply_display_preferences()
+        self.startup_mod_check_running = False
+        self.startup_mod_updates = []
         self.selected_instance_id = None
         self.selected_account_id = None
         self.active_installs = set()
@@ -2225,7 +2284,8 @@ class Launcher(ctk.CTk):
         self.bind("<Configure>", self.on_window_configure, add="+")
         self.after(50, self.drain_ui_events)
         self.after(250, self.show_first_run_legal_notice)
-        self.after(1800, self.check_updates_on_schedule)
+        self.after(500, self.ensure_chat_browser)
+        self.after(1800, self.startup_checks)
         self.after(30000, self.refresh_playtime_clock)
 
     def apply_app_branding(self):
@@ -2699,11 +2759,38 @@ class Launcher(ctk.CTk):
         self.build_main()
 
     def build_sidebar(self):
-        sidebar = tk.Frame(self, width=270, bg=SIDEBAR, bd=0, highlightthickness=0)
-        sidebar.grid(row=0, column=0, sticky="nsew")
-        sidebar.grid_propagate(False)
+        self.sidebar_outer = tk.Frame(
+            self, width=round(270 * self.display_scale), bg=SIDEBAR, bd=0, highlightthickness=0
+        )
+        self.sidebar_outer.grid(row=0, column=0, sticky="nsew")
+        self.sidebar_outer.grid_propagate(False)
+        self.sidebar_outer.grid_columnconfigure(0, weight=1)
+        self.sidebar_outer.grid_rowconfigure(0, weight=1)
+        self.sidebar_canvas = tk.Canvas(self.sidebar_outer, bg=SIDEBAR, bd=0, highlightthickness=0)
+        self.sidebar_canvas.grid(row=0, column=0, sticky="nsew")
+        self.sidebar_scrollbar = tk.Scrollbar(self.sidebar_outer, command=self.sidebar_canvas.yview)
+        self.sidebar_scrollbar.grid(row=0, column=1, sticky="ns")
+        self.sidebar_canvas.configure(yscrollcommand=self.sidebar_scrollbar.set)
+        sidebar = tk.Frame(self.sidebar_canvas, bg=SIDEBAR, bd=0, highlightthickness=0)
+        self.sidebar_content = sidebar
+        window = self.sidebar_canvas.create_window(0, 0, window=sidebar, anchor="nw")
         sidebar.grid_columnconfigure(0, weight=1)
         sidebar.grid_rowconfigure(2, weight=1)
+
+        def resize(_event=None):
+            self.sidebar_canvas.itemconfigure(
+                window,
+                width=self.sidebar_canvas.winfo_width(),
+                height=max(sidebar.winfo_reqheight(), self.sidebar_canvas.winfo_height()),
+            )
+            self.sidebar_canvas.configure(scrollregion=self.sidebar_canvas.bbox("all"))
+            if sidebar.winfo_reqheight() > self.sidebar_canvas.winfo_height() + 1:
+                self.sidebar_scrollbar.grid()
+            else:
+                self.sidebar_scrollbar.grid_remove()
+
+        sidebar.bind("<Configure>", resize)
+        self.sidebar_canvas.bind("<Configure>", resize)
 
         brand_band = tk.Frame(sidebar, bg=BRAND_WORDMARK_BG, bd=0, highlightthickness=0)
         brand_band.grid(row=0, column=0, sticky="ew")
@@ -2959,9 +3046,19 @@ class Launcher(ctk.CTk):
         footer.grid(row=2, column=0, sticky="ew")
         self.main_footer = footer
         self.status = tk.StringVar(value="Ready")
+        self.updates_available_button = ctk.CTkButton(
+            footer,
+            text="Updates available",
+            command=self.show_available_updates,
+            height=28,
+            width=165,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            font=self.font_small,
+        )
         ctk.CTkLabel(
             footer, textvariable=self.status, text_color=MUTED, font=self.font_small, anchor="w"
-        ).pack(fill="x", padx=32, pady=8)
+        ).pack(side="left", fill="x", expand=True, padx=32, pady=8)
         self.show_page("Launcher")
 
     def open_external_url(self, url, label):
@@ -3100,6 +3197,17 @@ class Launcher(ctk.CTk):
         self.launch_dashboard = LauncherDashboardCanvas(page, self)
         self.launch_dashboard.grid(row=0, column=0, sticky="nsew")
         self.dashboard_host = self.launch_dashboard
+        self.dashboard_xscroll = tk.Scrollbar(
+            page, orient="horizontal", command=self.launch_dashboard.xview
+        )
+        self.dashboard_yscroll = tk.Scrollbar(
+            page, orient="vertical", command=self.launch_dashboard.yview
+        )
+        self.dashboard_xscroll.grid(row=1, column=0, sticky="ew")
+        self.dashboard_yscroll.grid(row=0, column=1, sticky="ns")
+        self.launch_dashboard.configure(
+            xscrollcommand=self.dashboard_xscroll.set, yscrollcommand=self.dashboard_yscroll.set
+        )
 
     def chat_web_ui(self, page):
         page.grid_columnconfigure(0, weight=1)
@@ -3138,6 +3246,7 @@ class Launcher(ctk.CTk):
     def chat_browser_command(self, parent_handle):
         profile_directory = self.store.root / chat_browser.PROFILE_DIRECTORY_NAME
         profile_directory.mkdir(parents=True, exist_ok=True)
+        launcher_preferences.write_chat_preferences(profile_directory, self.store.data["settings"])
         try:
             os.chmod(profile_directory, 0o700)
         except OSError:
@@ -3445,7 +3554,7 @@ class Launcher(ctk.CTk):
                 "stored on this device. Microsoft tokens are sent only to Microsoft/Xbox/"
                 "Minecraft services for sign-in and ownership checks; they are not sent to "
                 "BreakBlocks. Searches and downloads contact the selected third-party service. "
-                "Opening Chat loads the authenticated BreakBlocks website in an embedded browser. "
+                "Chat loads the authenticated BreakBlocks website in the background at startup. "
                 "Its cookies and site data are kept locally so your website session can persist; "
                 "the launcher does not receive the password entered into that website."
             ),
@@ -3507,229 +3616,7 @@ class Launcher(ctk.CTk):
         ).pack(fill="x", padx=20, pady=(3, 18))
 
     def settings_ui(self, page):
-        page.grid_columnconfigure(0, weight=1)
-        page.grid_rowconfigure(1, weight=1)
-
-        settings = self.store.data["settings"]
-        self.java = tk.StringVar(value=settings.get("java", "auto"))
-        self.memory = tk.IntVar(value=int(settings.get("memory", 4096)))
-        self.keep_launcher_open = tk.BooleanVar(
-            value=bool(settings.get("keep_launcher_open", True))
-        )
-        self.update_enabled = tk.BooleanVar(value=bool(settings.get("update_enabled", True)))
-        self.update_channel = tk.StringVar(
-            value=settings.get("update_channel", DEFAULT_UPDATE_CHANNEL)
-        )
-        self.update_frequency = tk.StringVar(value=settings.get("update_frequency", "daily"))
-
-        actions = ctk.CTkFrame(page, fg_color="transparent")
-        actions.grid(row=0, column=0, sticky="ew", pady=(0, 12))
-        actions.grid_columnconfigure(0, weight=1)
-        ctk.CTkButton(
-            actions,
-            text="Open Launcher Folder",
-            command=self.open_data_folder,
-            width=175,
-            height=42,
-            corner_radius=10,
-            fg_color=CONTROL_SURFACE,
-            hover_color=ACCENT_HOVER,
-            font=self.font_button,
-        ).grid(row=0, column=1, padx=(0, 8))
-        ctk.CTkButton(
-            actions,
-            text="Save Settings",
-            command=self.save_settings,
-            width=150,
-            height=42,
-            corner_radius=10,
-            fg_color=ACCENT,
-            hover_color=ACCENT_HOVER,
-            font=self.font_button,
-        ).grid(row=0, column=2)
-
-        content = ctk.CTkScrollableFrame(
-            page,
-            fg_color="transparent",
-            corner_radius=0,
-        )
-        content.grid(row=1, column=0, sticky="nsew")
-        content.grid_columnconfigure(0, weight=1)
-
-        runtime_card = self.settings_card(
-            content,
-            "Minecraft runtime",
-            "Choose Java automatically or provide an executable, and set the default RAM for new instances.",
-            0,
-        )
-        self.java_entry = ctk.CTkEntry(
-            runtime_card,
-            textvariable=self.java,
-            height=42,
-            corner_radius=9,
-            fg_color=DARK_SURFACE,
-            border_color=BORDER,
-            text_color=TEXT,
-            placeholder_text="auto",
-            font=self.font_body,
-        )
-        self.java_entry.pack(fill="x", padx=20, pady=(3, 12))
-
-        memory_row = ctk.CTkFrame(runtime_card, fg_color="transparent")
-        memory_row.pack(fill="x", padx=20, pady=(0, 18))
-        memory_row.grid_columnconfigure(0, weight=1)
-        self.memory_slider = ctk.CTkSlider(
-            memory_row,
-            from_=1024,
-            to=32768,
-            number_of_steps=124,
-            command=self.memory_changed,
-            button_color=ACCENT,
-            button_hover_color=ACCENT_HOVER,
-            progress_color=ACCENT,
-            fg_color=CONTROL_SURFACE,
-        )
-        self.memory_slider.grid(row=0, column=0, sticky="ew", padx=(0, 18))
-        self.memory_label = ctk.CTkLabel(
-            memory_row,
-            text="4096 MiB",
-            width=105,
-            height=38,
-            corner_radius=9,
-            fg_color=DARK_SURFACE,
-            text_color=TEXT,
-            font=self.font_button,
-        )
-        self.memory_label.grid(row=0, column=1)
-
-        launch_card = self.settings_card(
-            content,
-            "Launch behaviour",
-            "Control what happens to the launcher after Minecraft starts.",
-            1,
-        )
-        ctk.CTkSwitch(
-            launch_card,
-            text="Keep the launcher visible while Minecraft is running",
-            variable=self.keep_launcher_open,
-            progress_color=GREEN_BG,
-            button_color=GREEN,
-            button_hover_color=GREEN_BORDER,
-            text_color=TEXT,
-            font=self.font_body,
-        ).pack(anchor="w", padx=20, pady=(4, 18))
-
-        update_card = self.settings_card(
-            content,
-            "Launcher updates",
-            "Check GitHub Releases for verified BreakBlocks Launcher packages.",
-            2,
-        )
-        update_controls = ctk.CTkFrame(update_card, fg_color="transparent")
-        update_controls.pack(fill="x", padx=20, pady=(3, 10))
-        update_controls.grid_columnconfigure(3, weight=1)
-        ctk.CTkSwitch(
-            update_controls,
-            text="Automatic checks",
-            variable=self.update_enabled,
-            progress_color=GREEN_BG,
-            button_color=GREEN,
-            button_hover_color=GREEN_BORDER,
-            text_color=TEXT,
-            font=self.font_body,
-        ).grid(row=0, column=0, sticky="w", padx=(0, 18))
-        ctk.CTkLabel(
-            update_controls,
-            text="Channel",
-            text_color=MUTED,
-            font=self.font_small,
-        ).grid(row=0, column=1, padx=(0, 7))
-        ctk.CTkOptionMenu(
-            update_controls,
-            variable=self.update_channel,
-            values=list(UPDATE_CHANNELS),
-            width=105,
-            height=36,
-            fg_color=CONTROL_SURFACE,
-            button_color=ACCENT,
-            button_hover_color=ACCENT_HOVER,
-            dropdown_fg_color=SURFACE_ALT,
-            dropdown_hover_color=SURFACE_HOVER,
-            font=self.font_small,
-        ).grid(row=0, column=2, padx=(0, 18))
-        ctk.CTkLabel(
-            update_controls,
-            text="Frequency",
-            text_color=MUTED,
-            font=self.font_small,
-        ).grid(row=0, column=3, sticky="e", padx=(0, 7))
-        ctk.CTkOptionMenu(
-            update_controls,
-            variable=self.update_frequency,
-            values=["startup", "daily", "weekly", "never"],
-            width=110,
-            height=36,
-            fg_color=CONTROL_SURFACE,
-            button_color=ACCENT,
-            button_hover_color=ACCENT_HOVER,
-            dropdown_fg_color=SURFACE_ALT,
-            dropdown_hover_color=SURFACE_HOVER,
-            font=self.font_small,
-        ).grid(row=0, column=4)
-
-        update_footer = ctk.CTkFrame(update_card, fg_color="transparent")
-        update_footer.pack(fill="x", padx=20, pady=(0, 18))
-        update_footer.grid_columnconfigure(0, weight=1)
-        self.update_status_text = tk.StringVar(value="No update check has run this session.")
-        ctk.CTkLabel(
-            update_footer,
-            textvariable=self.update_status_text,
-            text_color=MUTED,
-            font=self.font_small,
-            anchor="w",
-        ).grid(row=0, column=0, sticky="ew")
-        self.check_update_button = ctk.CTkButton(
-            update_footer,
-            text="Check now",
-            command=lambda: self.check_for_launcher_update(manual=True),
-            width=110,
-            height=36,
-            corner_radius=9,
-            fg_color=CONTROL_SURFACE,
-            hover_color=ACCENT_HOVER,
-            font=self.font_small,
-        )
-        self.check_update_button.grid(row=0, column=1, padx=(12, 0))
-
-        chat_card = self.settings_card(
-            content,
-            "BreakBlocks Chat",
-            "Chat sign-in and preferences are managed by the secure BreakBlocks website.",
-            3,
-        )
-        ctk.CTkLabel(
-            chat_card,
-            text=(
-                "The launcher stores the web chat's cookies and site data locally so you do not "
-                "need to sign in every time. Use the website's own Log out control to end the session."
-            ),
-            text_color=TEXT,
-            font=self.font_body,
-            anchor="w",
-            justify="left",
-            wraplength=820,
-        ).pack(fill="x", padx=20, pady=(3, 12))
-        ctk.CTkButton(
-            chat_card,
-            text="Open Chat",
-            command=lambda: self.show_page("Chat"),
-            width=125,
-            height=38,
-            corner_radius=9,
-            fg_color=CONTROL_SURFACE,
-            hover_color=ACCENT_HOVER,
-            font=self.font_small,
-        ).pack(anchor="w", padx=20, pady=(0, 18))
+        settings_panel.build(self, page, globals())
 
     def _settings_entry(
         self,
@@ -3769,16 +3656,61 @@ class Launcher(ctk.CTk):
 
     def settings_card(self, parent, title, subtitle, row):
         card = ctk.CTkFrame(
-            parent, fg_color=SURFACE, corner_radius=16, border_width=1, border_color=BORDER
+            parent, fg_color=SURFACE, corner_radius=12, border_width=1, border_color=BORDER
         )
-        card.grid(row=row, column=0, sticky="ew", pady=(0, 13))
-        ctk.CTkLabel(card, text=title, text_color=TEXT, font=self.font_heading, anchor="w").pack(
-            fill="x", padx=20, pady=(17, 2)
+        card.grid(row=row, column=0, sticky="ew", pady=(0, 10))
+        body = ctk.CTkFrame(card, fg_color="transparent")
+        if parent is not getattr(self, "settings_content", None):
+            ctk.CTkLabel(
+                card, text=title, font=self.font_heading, text_color=TEXT, anchor="w"
+            ).pack(fill="x", padx=20, pady=(14, 4))
+            body.pack(fill="x", pady=(0, 12))
+            ctk.CTkLabel(
+                body,
+                text=subtitle,
+                text_color=MUTED,
+                font=self.font_small,
+                anchor="w",
+                justify="left",
+                wraplength=720,
+            ).pack(fill="x", padx=20, pady=(4, 10))
+            return body
+        ctk.CTkLabel(
+            body,
+            text=subtitle,
+            text_color=MUTED,
+            font=self.font_small,
+            anchor="w",
+            justify="left",
+            wraplength=720,
+        ).pack(fill="x", padx=20, pady=(4, 10))
+
+        def toggle():
+            expanded = bool(body.winfo_manager())
+            for name, (other_header, other_body, _callback) in self.settings_sections.items():
+                other_body.pack_forget()
+                other_header.configure(text="▸  " + name)
+            if not expanded:
+                body.pack(fill="x", pady=(0, 12))
+                header.configure(text="▾  " + title)
+
+        header = ctk.CTkButton(
+            card,
+            text="▸  " + title,
+            command=toggle,
+            anchor="w",
+            height=48,
+            fg_color="transparent",
+            hover_color=SURFACE_HOVER,
+            text_color=TEXT,
+            font=self.font_heading,
         )
-        ctk.CTkLabel(card, text=subtitle, text_color=MUTED, font=self.font_small, anchor="w").pack(
-            fill="x", padx=20, pady=(0, 12)
-        )
-        return card
+        header.pack(fill="x", padx=6, pady=5)
+        self.settings_sections[title] = (header, body, toggle)
+        if row == 0:
+            body.pack(fill="x", pady=(0, 12))
+            header.configure(text="▾  " + title)
+        return body
 
     def show_page(self, name, force=False):
         if self.current_page == "Mods" and name != "Mods" and not force:
@@ -4045,7 +3977,7 @@ class Launcher(ctk.CTk):
             body,
             text=(
                 instance["name"]
-                + "\nThe last five backups are kept. Restoring changes mods, configs and the launch profile; your worlds stay as they are."
+                + f"\nUp to {manager.preferences['backup_count']} backups are kept within the configured space limit. Restoring changes mods, configs and the launch profile; your worlds stay as they are."
             ),
             text_color=MUTED,
             font=self.font_small,
@@ -4512,6 +4444,16 @@ class Launcher(ctk.CTk):
             border_color=BORDER,
             font=self.font_button,
         ).pack(side="left")
+        ctk.CTkButton(
+            buttons,
+            text="Window size…",
+            command=lambda: self.instance_window_dialog(instance),
+            width=110,
+            height=42,
+            fg_color=SURFACE_ALT,
+            hover_color=SURFACE_HOVER,
+            font=self.font_small,
+        ).pack(side="left", padx=6)
         ctk.CTkButton(
             buttons,
             text="Cancel",
@@ -5393,7 +5335,7 @@ class Launcher(ctk.CTk):
 
         def worker():
             try:
-                if backup_reason:
+                if backup_reason and self.store.data["settings"].get("automatic_backups", True):
                     self.post_ui(lambda: self.mod_status.set("Saving a recovery backup…"))
                     instance_archives.BackupManager(self.store.root).create(
                         context["instance"],
@@ -6167,7 +6109,293 @@ class Launcher(ctk.CTk):
         self.memory.set(memory)
         self.memory_label.configure(text=f"{memory} MiB")
 
+    def apply_display_preferences(self):
+        preferences = launcher_preferences.normalized(self.store.data["settings"])
+        self.display_scale = preferences["ui_scale"] / 100
+        self.text_scale = preferences["text_scale"] / 100
+        ctk.set_widget_scaling(self.display_scale)
+        if hasattr(self, "sidebar_outer"):
+            self.sidebar_outer.configure(width=round(270 * self.display_scale))
+        for name, size in self.font_base_sizes.items():
+            getattr(self, name).configure(size=max(9, round(size * self.text_scale)))
+        dashboard = getattr(self, "launch_dashboard", None)
+        if dashboard is not None:
+            dashboard.refresh()
+
+    def browse_java(self):
+        chosen = filedialog.askopenfilename(
+            title="Choose Java executable",
+            filetypes=(
+                [("Java executable", "*.exe"), ("All files", "*")]
+                if os.name == "nt"
+                else [("All files", "*")]
+            ),
+        )
+        if chosen:
+            self.java.set(chosen)
+
+    def test_java_selection(self):
+        selected = self.java.get()
+        if selected.strip().lower() == "auto" and not shutil.which("java"):
+            executable = "java.exe" if os.name == "nt" else "java"
+            managed = sorted((self.store.root / "java").glob(f"**/bin/{executable}"))
+            if managed:
+                selected = str(managed[-1])
+
+        def worker():
+            try:
+                path, version = launcher_preferences.test_java(selected)
+                self.post_ui(
+                    lambda: self.show_notice("Java test successful", path + "\n\n" + version)
+                )
+            except Exception as error:
+                self.post_ui(
+                    lambda detail=str(error): self.show_notice(
+                        "Could not test Java", detail, danger=True
+                    )
+                )
+
+        threading.Thread(target=worker, daemon=True, name="java-test").start()
+
+    def preview_chat_notification(self):
+        self.ensure_chat_browser()
+        values = dict(self.store.data["settings"])
+        values.update(
+            {key: self.preference_vars[key].get() for key in launcher_preferences.CHAT_KEYS}
+        )
+        launcher_preferences.write_chat_preferences(
+            self.store.root / chat_browser.PROFILE_DIRECTORY_NAME, values, preview=True
+        )
+
+    def refresh_storage_usage(self):
+        if getattr(self, "storage_check_running", False):
+            return
+        self.storage_check_running = True
+        self.storage_status.set("Measuring local storage…")
+
+        def worker():
+            try:
+                usage = launcher_preferences.storage_usage(self.store.root)
+                disposable = sum(
+                    path.stat().st_size
+                    for path in launcher_preferences.disposable_downloads(self.store.root)
+                )
+                text = "\n".join(
+                    f"{name.replace('-', ' ').title()}: {launcher_preferences.format_bytes(size)}"
+                    for name, size in usage.items()
+                )
+                text += "\nDisposable installation archives: " + launcher_preferences.format_bytes(
+                    disposable
+                )
+            except Exception as error:
+                text = "Storage measurement failed: " + str(error)
+
+            def complete():
+                self.storage_check_running = False
+                if not self.closing:
+                    self.storage_status.set(text)
+
+            self.post_ui(complete)
+
+        threading.Thread(target=worker, daemon=True, name="storage-usage").start()
+
+    def clear_unused_downloads(self):
+        if self.active_installs or self.instance_tasks or self.launching_instances:
+            self.show_notice(
+                "Instance task in progress",
+                "Wait for installations and instance tasks to finish before clearing downloads.",
+            )
+            return
+        # Deleting only known archives is brief; keep this on the UI thread so
+        # another installation cannot start between the idle check and deletion.
+        try:
+            amount = launcher_preferences.clear_disposable_downloads(self.store.root)
+            self.show_notice(
+                "Unused downloads cleared",
+                "Freed "
+                + launcher_preferences.format_bytes(amount)
+                + " of downloaded installation archives.",
+            )
+            self.refresh_storage_usage()
+        except Exception as error:
+            self.show_notice("Could not clear downloads", str(error), danger=True)
+
+    def instance_window_dialog(self, instance):
+        if not self.idle_instance(instance):
+            return
+        window, body = self.make_dialog("Minecraft window size", 470, 340)
+        inherit = tk.BooleanVar(value=not bool(instance.get("window_width")))
+        width = tk.StringVar(value=str(instance.get("window_width") or ""))
+        height = tk.StringVar(value=str(instance.get("window_height") or ""))
+        ctk.CTkLabel(body, text=instance["name"], font=self.font_heading, text_color=TEXT).pack(
+            pady=(20, 8)
+        )
+        fields = ctk.CTkFrame(body, fg_color="transparent")
+        fields.pack(fill="x", padx=20, pady=10)
+        fields.grid_columnconfigure((0, 1), weight=1)
+        width_entry = self._settings_entry(fields, "WIDTH", width, 0, 0)
+        height_entry = self._settings_entry(fields, "HEIGHT", height, 0, 1)
+
+        def state():
+            for entry in (width_entry, height_entry):
+                entry.configure(state="disabled" if inherit.get() else "normal")
+
+        ctk.CTkSwitch(
+            body,
+            text="Use the global window defaults",
+            variable=inherit,
+            command=state,
+            font=self.font_body,
+        ).pack(anchor="w", padx=20, pady=8)
+        state()
+
+        def save():
+            try:
+                values = launcher_preferences.validate(
+                    {
+                        "window_width": 0 if inherit.get() else width.get(),
+                        "window_height": 0 if inherit.get() else height.get(),
+                    }
+                )
+                if not inherit.get() and not values["window_width"]:
+                    raise ValueError("Enter the window width and height, or use global defaults.")
+                instance.update(
+                    window_width=None if inherit.get() else values["window_width"],
+                    window_height=None if inherit.get() else values["window_height"],
+                )
+                self.store.save()
+                window.destroy()
+            except ValueError as error:
+                self.show_notice("Check window dimensions", str(error), danger=True)
+
+        ctk.CTkButton(
+            body,
+            text="Save window size",
+            command=save,
+            fg_color=ACCENT,
+            hover_color=ACCENT_HOVER,
+            font=self.font_button,
+        ).pack(pady=14)
+
+    def startup_checks(self):
+        if self.closing:
+            return
+        settings = self.store.data["settings"]
+        if settings.get("update_enabled", True) and settings.get("update_check_startup", True):
+            self.check_for_launcher_update()
+        if settings.get("mods_check_startup", True):
+            self.check_startup_mod_updates()
+        self.after(3600000, self.periodic_update_check)
+
+    def periodic_update_check(self):
+        if self.closing:
+            return
+        if self.store.data["settings"].get("update_frequency") != "startup":
+            self.check_updates_on_schedule()
+        self.after(3600000, self.periodic_update_check)
+
+    def check_startup_mod_updates(self):
+        if self.closing or self.startup_mod_check_running:
+            return
+        self.startup_mod_check_running = True
+        instances = [dict(instance) for instance in self.store.data["instances"]]
+
+        def worker():
+            try:
+                available, failures = startup_updates.check_mods(
+                    self.store.root, instances, self.instance_is_busy
+                )
+            except Exception as error:
+                available, failures = [], [("startup", str(error))]
+
+            def complete():
+                self.startup_mod_check_running = False
+                if self.closing:
+                    return
+                self.startup_mod_updates = available
+                for ident, detail in failures:
+                    log_launcher_message("Mod update check " + ident, detail)
+                self.refresh_update_notification()
+
+            self.post_ui(complete)
+
+        threading.Thread(target=worker, daemon=True, name="installed-mod-update-check").start()
+
+    def refresh_update_notification(self):
+        count = (1 if self.available_update else 0) + sum(
+            len(item["updates"]) for item in self.startup_mod_updates
+        )
+        if count:
+            self.updates_available_button.configure(text=f"Updates available ({count})")
+            self.updates_available_button.pack(side="right", padx=20, pady=5)
+            self.status.set(
+                f"{count} update{'s' if count != 1 else ''} available — choose Updates available to review"
+            )
+        else:
+            self.updates_available_button.pack_forget()
+
+    def show_available_updates(self):
+        window, body = self.make_dialog("Available updates", 640, 540)
+        ctk.CTkLabel(body, text="Available updates", font=self.font_title, text_color=TEXT).pack(
+            anchor="w", padx=24, pady=(20, 10)
+        )
+        rows = ctk.CTkScrollableFrame(body, fg_color="transparent")
+        rows.pack(fill="both", expand=True, padx=16, pady=(0, 18))
+        if self.available_update:
+            update = self.available_update
+            ctk.CTkButton(
+                rows,
+                text="Launcher: " + update.display_version,
+                command=lambda: (window.destroy(), self.show_launcher_update(update)),
+                fg_color=ACCENT,
+                hover_color=ACCENT_HOVER,
+                font=self.font_button,
+            ).pack(fill="x", pady=6)
+        for item in self.startup_mod_updates:
+            count = len(item["updates"])
+            ctk.CTkButton(
+                rows,
+                text=f"{item['instance_name']}: {count} compatible mod update{'s' if count != 1 else ''}",
+                command=lambda ident=item["instance_id"]: (
+                    window.destroy(),
+                    self.open_instance_updates(ident),
+                ),
+                fg_color=SURFACE_ALT,
+                hover_color=SURFACE_HOVER,
+                font=self.font_button,
+            ).pack(fill="x", pady=6)
+            titles = [update["record"].get("title", "Mod") for update in item["updates"]]
+            ctk.CTkLabel(
+                rows,
+                text=", ".join(titles),
+                wraplength=550,
+                justify="left",
+                anchor="w",
+                text_color=MUTED,
+                font=self.font_small,
+            ).pack(fill="x", padx=10, pady=(0, 8))
+
+    def open_instance_updates(self, ident):
+        if not any(item["id"] == ident for item in self.store.data["instances"]):
+            return
+        self.select_instance(ident)
+        self.open_modrinth_manager()
+
+        def show_updates():
+            if self.mod_context_alive() and self.mod_context["instance"]["id"] == ident:
+                self.select_mod_tab("Updates")
+
+        self.after(120, show_updates)
+
     def save_settings(self):
+        try:
+            preferences = launcher_preferences.validate(
+                {key: variable.get() for key, variable in self.preference_vars.items()}
+            )
+        except ValueError as error:
+            self.show_notice("Check settings", str(error), danger=True)
+            return
+        self.store.data["settings"].update(preferences)
         self.store.data["settings"].update(
             java=self.java.get().strip() or "auto",
             memory=self.memory.get(),
@@ -6177,6 +6405,10 @@ class Launcher(ctk.CTk):
             update_frequency=self.update_frequency.get(),
         )
         self.store.save()
+        launcher_preferences.write_chat_preferences(
+            self.store.root / chat_browser.PROFILE_DIRECTORY_NAME, self.store.data["settings"]
+        )
+        self.apply_display_preferences()
         self.status.set("Settings saved")
         self.show_notice("Settings saved", "Your launcher and update settings have been updated.")
 
@@ -6224,6 +6456,8 @@ class Launcher(ctk.CTk):
         threading.Thread(target=worker, daemon=True, name="launcher-update-check").start()
 
     def finish_update_check(self, update, error, manual):
+        if self.closing:
+            return
         self.update_check_running = False
         self.check_update_button.configure(state="normal", text="Check now")
         self.store.data["settings"]["last_update_check"] = int(time.time())
@@ -6236,6 +6470,7 @@ class Launcher(ctk.CTk):
             return
         if update is None:
             self.available_update = None
+            self.refresh_update_notification()
             self.update_status_text.set(f"{APP_VERSION} is up to date.")
             self.status.set("Launcher is up to date")
             if manual:
@@ -6245,7 +6480,9 @@ class Launcher(ctk.CTk):
         self.available_update = update
         self.update_status_text.set(f"{update.display_version} is available.")
         self.status.set(f"Launcher update {update.display_version} is available")
-        self.show_launcher_update(update)
+        self.refresh_update_notification()
+        if manual:
+            self.show_launcher_update(update)
 
     def show_launcher_update(self, update):
         window, body = self.make_dialog("Launcher update available", 570, 470)
@@ -6456,7 +6693,7 @@ class Launcher(ctk.CTk):
             previous = None
             rollback_data = rollback
             try:
-                if backup_reason:
+                if backup_reason and self.store.data["settings"].get("automatic_backups", True):
                     current = next(
                         item for item in self.store.data["instances"] if item["id"] == ident
                     )
@@ -6588,6 +6825,11 @@ class Launcher(ctk.CTk):
             return
 
         launch_memory = int(instance.get("memory", self.store.data["settings"].get("memory", 4096)))
+        launch_preferences = launcher_preferences.normalized(self.store.data["settings"])
+        if instance.get("window_width") and instance.get("window_height"):
+            launch_preferences.update(
+                window_width=instance["window_width"], window_height=instance["window_height"]
+            )
         self.launching_instances.add(ident)
         self.refresh_instances()
 
@@ -6601,6 +6843,7 @@ class Launcher(ctk.CTk):
                     self.store.instances / ident,
                     launch_account,
                     java_override=self.store.data["settings"].get("java", "auto"),
+                    preferences=launch_preferences,
                     progress=lambda _percent, label: self.post_ui(
                         lambda label=label: self.status.set(label)
                     ),

@@ -15,6 +15,8 @@ from ctypes import wintypes
 from PySide6.QtCore import QAbstractNativeEventFilter, QEvent, QObject, Qt, QTimer
 from PySide6.QtWidgets import QHBoxLayout, QLabel, QPushButton, QVBoxLayout, QWidget
 
+import launcher_preferences
+
 HOTKEY_ID = 0xBBC1
 WM_HOTKEY = 0x0312
 MOD_CONTROL = 0x0002
@@ -71,6 +73,10 @@ class WindowsChatOverlay(QObject):
         self.visible = False
         self.registered = False
         self.last_registration_attempt = 0.0
+        self.enabled = True
+        self.hotkey = "Ctrl+Shift+F9"
+        self.hotkey_modifiers = MOD_CONTROL | MOD_SHIFT
+        self.hotkey_key = VK_F9
         self.user32 = ctypes.WinDLL("user32", use_last_error=True)
         self.user32.RegisterHotKey.argtypes = (
             wintypes.HWND,
@@ -118,7 +124,8 @@ class WindowsChatOverlay(QObject):
         row.setContentsMargins(16, 7, 10, 7)
         row.addWidget(QLabel("BREAKBLOCKS CHAT"))
         row.addStretch()
-        row.addWidget(QLabel("Ctrl+Shift+F9 or Esc to return to Minecraft"))
+        self.hotkey_hint = QLabel("Ctrl+Shift+F9 or Esc to return to Minecraft")
+        row.addWidget(self.hotkey_hint)
         close = QPushButton("×")
         close.setFixedWidth(32)
         close.clicked.connect(self.hide)
@@ -138,6 +145,24 @@ class WindowsChatOverlay(QObject):
         self.timer.start(250)
         print(f"Chat overlay: ready; waiting for Minecraft PIDs in {self.game_file}", flush=True)
 
+    def apply_preferences(self, preferences):
+        values = launcher_preferences.normalized(preferences)
+        hotkey, modifiers, key = launcher_preferences.parse_hotkey(values["overlay_hotkey"])
+        enabled = values["overlay_enabled"]
+        if self.registered and (hotkey != self.hotkey or not enabled):
+            self.user32.UnregisterHotKey(int(self.window.winId()), HOTKEY_ID)
+            self.registered = False
+        self.hotkey, self.hotkey_modifiers, self.hotkey_key = hotkey, modifiers, key
+        self.enabled = enabled
+        self.last_registration_attempt = 0.0
+        self.hotkey_hint.setText(f"{hotkey} or Esc to return to Minecraft")
+        self.hotkey_hint.setStyleSheet(
+            f"font-size: {round(13 * values['overlay_text_scale'] / 100)}px;"
+        )
+        if not enabled and self.visible:
+            self.hide()
+        self.update()
+
     def _foreground(self):
         handle = self.user32.GetForegroundWindow()
         pid = wintypes.DWORD()
@@ -150,7 +175,7 @@ class WindowsChatOverlay(QObject):
         if active != self.game_pids:
             self.game_pids = active
             print(f"Chat overlay: active Minecraft PIDs {sorted(active)}", flush=True)
-        if active and not self.registered:
+        if active and self.enabled and not self.registered:
             # Register for this real HWND. Qt delivers its WM_HOTKEY as a
             # windows_generic_MSG, even while the overlay is hidden.
             now = time.monotonic()
@@ -161,19 +186,19 @@ class WindowsChatOverlay(QObject):
                     self.user32.RegisterHotKey(
                         int(self.window.winId()),
                         HOTKEY_ID,
-                        MOD_CONTROL | MOD_SHIFT | MOD_NOREPEAT,
-                        VK_F9,
+                        self.hotkey_modifiers | MOD_NOREPEAT,
+                        self.hotkey_key,
                     )
                 )
                 if self.registered:
-                    print("Chat overlay: Ctrl+Shift+F9 registered", flush=True)
+                    print(f"Chat overlay: {self.hotkey} registered", flush=True)
                 else:
                     print(
-                        f"Chat overlay: Ctrl+Shift+F9 registration failed "
+                        f"Chat overlay: {self.hotkey} registration failed "
                         f"(Windows error {ctypes.get_last_error()}); retrying",
                         flush=True,
                     )
-        elif not active and self.registered:
+        elif (not active or not self.enabled) and self.registered:
             self.user32.UnregisterHotKey(int(self.window.winId()), HOTKEY_ID)
             self.registered = False
             print("Chat overlay: hotkey released", flush=True)
@@ -183,7 +208,9 @@ class WindowsChatOverlay(QObject):
                 self.hide()
 
     def toggle(self):
-        print("Chat overlay: Ctrl+Shift+F9 received", flush=True)
+        if not self.enabled:
+            return
+        print(f"Chat overlay: {self.hotkey} received", flush=True)
         if self.visible:
             self.hide()
             return

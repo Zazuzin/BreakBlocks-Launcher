@@ -11,12 +11,15 @@ from __future__ import annotations
 
 import argparse
 import ctypes
+import json
 import os
 import pathlib
 import re
 import sys
 import traceback
 import urllib.parse
+
+import launcher_preferences
 
 CHAT_URL = "https://irc.breakblocks.com/#/connect"
 CHAT_ORIGIN = "https://irc.breakblocks.com"
@@ -509,8 +512,9 @@ def run_browser(
         # window to become a real child of the Tk Chat host under Wayland too.
         os.environ.setdefault("QT_QPA_PLATFORM", "xcb")
 
-    from PySide6.QtCore import QPoint, Qt, QTimer, QUrl
+    from PySide6.QtCore import QObject, QPoint, Qt, QTimer, QUrl, Signal
     from PySide6.QtGui import QCursor, QMouseEvent, QPixmap
+    from PySide6.QtMultimedia import QSoundEffect
     from PySide6.QtWebEngineCore import (
         QWebEnginePage,
         QWebEnginePermission,
@@ -548,6 +552,40 @@ def run_browser(
     profile.setHttpUserAgent(f"{profile.httpUserAgent()} BreakBlocks-Launcher")
 
     page = QWebEnginePage(profile, application)
+    # The launcher owns notification audio and keeps the signed-in chat active.
+    page.setAudioMuted(True)
+    page.setLifecycleState(QWebEnginePage.LifecycleState.Active)
+    preferences_file = profile_directory / "launcher-preferences.json"
+    preferences = launcher_preferences.load(preferences_file)
+    preference_stamp = None
+    last_preview = 0
+    sound = QSoundEffect(application)
+    sound_path = (
+        pathlib.Path(getattr(sys, "_MEIPASS", pathlib.Path(__file__).parent))
+        / "assets/audio/notification.wav"
+    )
+    if sound_path.is_file():
+        sound.setSource(QUrl.fromLocalFile(str(sound_path.resolve())))
+
+    class PreviewNotification(QObject):
+        closed = Signal()
+
+        def title(self):
+            return "BreakBlocks Chat"
+
+        def message(self):
+            return "This is a preview of your chat notification settings."
+
+        def show(self):
+            pass
+
+        def click(self):
+            pass
+
+        def close(self):
+            self.closed.emit()
+
+    preview_notification = PreviewNotification(application)
 
     notification_type = QWebEnginePermission.PermissionType.Notifications
     profile.queryPermission(QUrl(CHAT_ORIGIN), notification_type).grant()
@@ -607,8 +645,11 @@ def run_browser(
             if self.notification is not None:
                 self.close_notification()
             self.notification = notification
-            self.title_label.setText(format_notification_title(notification.title()))
-            self.message_label.setText(notification.message())
+            hidden = preferences["chat_hide_previews"]
+            self.title_label.setText(
+                "BreakBlocks Chat" if hidden else format_notification_title(notification.title())
+            )
+            self.message_label.setText("New chat message" if hidden else notification.message())
             logo_path = notification_logo_path()
             icon = QPixmap(str(logo_path)) if logo_path is not None else QPixmap()
             if not icon.isNull():
@@ -656,7 +697,7 @@ def run_browser(
                     )
             notification.show()
             QTimer.singleShot(
-                8000,
+                preferences["chat_duration"] * 1000,
                 lambda current=notification: self.close_if_current(current),
             )
 
@@ -694,7 +735,36 @@ def run_browser(
             f"notification received; unread={count}; overlay_open={overlay_open}; "
             f"launcher_chat_visible={chat_visible}"
         )
-        notification_popup.present(notification)
+        display_notification(notification)
+
+    def display_notification(notification):
+        if preferences["chat_sound"] and preferences["chat_volume"]:
+            sound.setVolume(preferences["chat_volume"] / 100)
+            sound.play()
+        if preferences["chat_popups"]:
+            notification_popup.present(notification)
+        else:
+            notification.close()
+
+    def refresh_preferences():
+        nonlocal preferences, preference_stamp, last_preview
+        try:
+            stamp = preferences_file.stat().st_mtime_ns
+            if stamp == preference_stamp:
+                return
+            packet = json.loads(preferences_file.read_text(encoding="utf-8"))
+            preferences = launcher_preferences.normalized(packet)
+            preference_stamp = stamp
+            if overlay is not None:
+                overlay.apply_preferences(preferences)
+            if not preferences["chat_popups"]:
+                notification_popup.close_notification()
+            preview_id = packet.get("_preview_id", 0)
+            if preview_id and preview_id != last_preview:
+                last_preview = preview_id
+                display_notification(preview_notification)
+        except (OSError, ValueError, TypeError, AttributeError):
+            pass
 
     profile.setNotificationPresenter(present_notification)
 
@@ -729,6 +799,16 @@ def run_browser(
 
     def keep_in_host() -> None:
         nonlocal unavailable_checks, reported_visibility
+        refresh_preferences()
+        desired_zoom = (
+            preferences["overlay_text_scale"] / 100
+            if overlay is not None and overlay.visible
+            else 1.0
+        )
+        if page.zoomFactor() != desired_zoom:
+            page.setZoomFactor(desired_zoom)
+        if page.lifecycleState() != QWebEnginePage.LifecycleState.Active:
+            page.setLifecycleState(QWebEnginePage.LifecycleState.Active)
         if shutdown_file.is_file():
             log_browser_message("received launcher shutdown request")
             timer.stop()

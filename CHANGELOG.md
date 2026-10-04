@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.9.27 Alpha (Windows and Linux)
+
+- Start web chat in the background when the launcher opens and reuse the saved website session.
+- Check launcher and compatible installed-mod updates at startup; show an Updates available button with a combined review screen. Checks do not install updates or change mod manifests.
+- Organise Settings into collapsible sections. Add notification sound/volume, pop-ups, privacy, duration and a test notification.
+- Add interface/text scaling with scrolling for enlarged layouts, and configurable Windows overlay enablement, shortcut and text size.
+- Add automatic backup controls, count/space retention, storage usage and cleanup of unused installation archives.
+- Add global and per-instance Minecraft window sizes, Java browsing/testing, launch-log retention, detailed logs with account tokens removed, custom JVM options and Minecraft download controls.
+
+
 ## 0.9.26 Alpha (Windows and Linux)
 
 - Removed old product names from documentation and general test fixtures. The

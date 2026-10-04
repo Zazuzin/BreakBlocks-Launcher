@@ -13,12 +13,15 @@ import shutil
 import subprocess
 import tarfile
 import threading
+import time
+import urllib.error
 import urllib.request
 import xml.etree.ElementTree as ET
 import zipfile
 from collections.abc import Callable, Iterable, Sequence
 from typing import Any
 
+import launcher_preferences
 from app_config import APP_NAME, APP_USER_AGENT, APP_VERSION_NUMBER
 from process_environment import system_process_environment
 
@@ -108,6 +111,7 @@ class Installer:
         self.root = pathlib.Path(root).resolve()
         self.progress = progress or (lambda _percent, _label: None)
         self.java_override = java_override
+        self.preferences = launcher_preferences.load(self.root / "launcher.json")
 
     def get_json(self, url: str) -> Any:
         request = urllib.request.Request(url, headers={"User-Agent": APP_USER_AGENT})
@@ -132,21 +136,40 @@ class Installer:
 
         request = urllib.request.Request(url, headers={"User-Agent": APP_USER_AGENT})
         temporary = target.with_suffix(f"{target.suffix}.part")
-        try:
-            with urllib.request.urlopen(request, timeout=60) as source:
-                total_size = int(source.headers.get("Content-Length", 0))
-                received = 0
-                with temporary.open("wb") as destination:
-                    while block := source.read(128 * 1024):
-                        destination.write(block)
-                        received += len(block)
-                        if total_size and report:
-                            percent = start + int((end - start) * received / total_size)
-                            self.progress(min(end, percent), label)
-            temporary.replace(target)
-        except Exception:
-            temporary.unlink(missing_ok=True)
-            raise
+        for attempt in range(self.preferences["download_retries"] + 1):
+            try:
+                with urllib.request.urlopen(
+                    request, timeout=self.preferences["download_timeout"]
+                ) as source:
+                    total_size = int(source.headers.get("Content-Length", 0))
+                    received = 0
+                    with temporary.open("wb") as destination:
+                        while block := source.read(128 * 1024):
+                            destination.write(block)
+                            received += len(block)
+                            if total_size and report:
+                                percent = start + int((end - start) * received / total_size)
+                                self.progress(min(end, percent), label)
+                    if total_size and received != total_size:
+                        raise OSError("The download ended before all files arrived.")
+                temporary.replace(target)
+                break
+            except (OSError, urllib.error.URLError) as error:
+                temporary.unlink(missing_ok=True)
+                retryable = not isinstance(error, urllib.error.HTTPError) or error.code in {
+                    408,
+                    429,
+                    500,
+                    502,
+                    503,
+                    504,
+                }
+                if not retryable or attempt >= self.preferences["download_retries"]:
+                    raise
+                time.sleep(min(0.25 * (2**attempt), 2))
+            except Exception:
+                temporary.unlink(missing_ok=True)
+                raise
 
         if report:
             self.progress(end, label)
@@ -157,7 +180,7 @@ class Installer:
         label: str,
         start: int,
         end: int,
-        workers: int = 10,
+        workers: int | None = None,
     ) -> None:
         unique_jobs = {str(pathlib.Path(job[1])): job for job in jobs}
         pending = list(unique_jobs.values())
@@ -178,7 +201,7 @@ class Installer:
             percent = start + int((end - start) * done / len(pending))
             self.progress(percent, f"{label} {done}/{len(pending)}")
 
-        worker_count = min(workers, len(pending))
+        worker_count = min(workers or self.preferences["download_workers"], len(pending))
         with concurrent.futures.ThreadPoolExecutor(
             max_workers=worker_count,
             thread_name_prefix="breakblocks-download",
@@ -268,7 +291,7 @@ class Installer:
                     (native_artifact["url"], target, "Native libraries", exclusions)
                 )
 
-        self.download_many(library_jobs, "Libraries", 31, 50, workers=8)
+        self.download_many(library_jobs, "Libraries", 31, 50)
         for _url, target, _label, exclusions in library_jobs:
             if exclusions is not None:
                 self.extract_natives(target, natives, exclusions)
@@ -289,7 +312,7 @@ class Installer:
                     None,
                 )
             )
-        self.download_many(asset_jobs, "Assets", 52, 99, workers=12)
+        self.download_many(asset_jobs, "Assets", 52, 99)
 
         record = {
             "version": version,
@@ -572,10 +595,18 @@ class Installer:
             source.extractall(target_root)  # nosec B202
 
 
-def rotate_launch_logs(instance: str | pathlib.Path) -> pathlib.Path:
-    """Keep the current launch log and the two preceding logs for an instance."""
+def rotate_launch_logs(instance: str | pathlib.Path, count: int = 3) -> pathlib.Path:
+    """Retain the configured number of launch logs for an instance."""
     instance_root = pathlib.Path(instance)
-    paths = [instance_root / name for name in LAUNCH_LOG_NAMES]
+    count = max(1, min(10, int(count)))
+    paths = [
+        instance_root / ("latest-launch.log" if index == 0 else f"latest-launch-{index}.log")
+        for index in range(count)
+    ]
+    for old in instance_root.glob("latest-launch-*.log"):
+        match = re.fullmatch(r"latest-launch-(\d+)\.log", old.name)
+        if match and int(match[1]) >= count:
+            old.unlink(missing_ok=True)
     for index in range(len(paths) - 1, 0, -1):
         source = paths[index - 1]
         destination = paths[index]
@@ -714,9 +745,15 @@ def launch(
     *,
     java_override: str | None = None,
     progress: ProgressCallback | None = None,
+    preferences: dict | None = None,
 ) -> subprocess.Popen[Any]:
     """Start Minecraft for an installed instance and return its process handle."""
     instance_root = pathlib.Path(instance).resolve()
+    preferences = (
+        launcher_preferences.normalized(preferences)
+        if preferences is not None
+        else launcher_preferences.load(instance_root.parent.parent / "launcher.json")
+    )
     record_path = instance_root / "instance-launch.json"
     try:
         original_record = json.loads(record_path.read_text(encoding="utf-8"))
@@ -805,6 +842,23 @@ def launch(
     if "-cp" not in jvm_arguments and "-classpath" not in jvm_arguments:
         jvm_arguments.extend(["-cp", os.pathsep.join(launch_record["classpath"])])
 
+    if preferences["window_width"] and preferences["window_height"]:
+        cleaned = []
+        index = 0
+        while index < len(game_arguments):
+            if game_arguments[index] in {"--width", "--height"}:
+                index += 2
+            else:
+                cleaned.append(game_arguments[index])
+                index += 1
+        game_arguments = [
+            *cleaned,
+            "--width",
+            str(preferences["window_width"]),
+            "--height",
+            str(preferences["window_height"]),
+        ]
+    jvm_arguments.extend(launcher_preferences.jvm_arguments(preferences["jvm_arguments"]))
     memory = int(account.get("memory", 4096))
     command = [
         launch_record["java"],
@@ -819,7 +873,24 @@ def launch(
         process_environment["AWT_WM_CLASS"] = window_class
         register_linux_minecraft_desktop(launch_record["version"])
     creation_flags = getattr(subprocess, "CREATE_NO_WINDOW", 0) if SYSTEM_OS == "windows" else 0
-    log_handle = rotate_launch_logs(instance_root).open("w", encoding="utf-8")
+    log_handle = rotate_launch_logs(instance_root, preferences["log_count"]).open(
+        "w", encoding="utf-8"
+    )
+    if preferences["detailed_logging"]:
+        safe_command = list(command)
+        secrets = [
+            str(value)
+            for key, value in account.items()
+            if "token" in key.lower() and value and len(str(value)) > 3
+        ]
+        for index, argument in enumerate(safe_command):
+            for secret in secrets:
+                argument = argument.replace(secret, "[redacted]")
+            if re.search(r"(?:password|secret|token)=", argument, re.I):
+                argument = argument.split("=", 1)[0] + "=[redacted]"
+            safe_command[index] = argument
+        log_handle.write("BreakBlocks launch diagnostics\n" + json.dumps(safe_command) + "\n")
+        log_handle.flush()
     try:
         return subprocess.Popen(
             command,

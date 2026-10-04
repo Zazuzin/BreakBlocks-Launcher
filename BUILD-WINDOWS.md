@@ -19,11 +19,11 @@ To run the launcher from source before packaging:
 .\.venv\Scripts\python.exe breakblocks_launcher_boot.pyw
 ```
 
-The build script checks formatting and runs the seven Windows regression test
+The build script checks formatting and runs the eight Windows regression test
 files before packaging. GitHub Actions calls this same script, using its Python
 installation through the optional `-PythonExecutable` argument. The tests cover
 chat, the Windows overlay, backups and transfers, recovery actions, diagnostics,
-data migration and Minecraft launching.
+data migration, Minecraft launching, saved preferences and startup update checks.
 
 The remaining test files use Linux data paths or Linux desktop behavior. Run
 the complete suite on Linux as described in `README-SOURCE.txt`.

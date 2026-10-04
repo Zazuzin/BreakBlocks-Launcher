@@ -299,6 +299,7 @@ def test_dashboard_render_path_builds_all_regions_without_a_tk_display():
     canvas.itemconfigure = noop
     canvas._instance_photo = lambda _instance, _size: None
     canvas._account_photo = lambda _account, _size: None
+    canvas.scale = lambda *args: None
     canvas.redraw()
 
     assert len(items) > 50

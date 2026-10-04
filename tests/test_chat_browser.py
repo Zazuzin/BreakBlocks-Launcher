@@ -199,7 +199,9 @@ def test_browser_helper_rejects_an_overridden_url():
 
 def test_launcher_starts_browser_with_a_dedicated_local_profile():
     with tempfile.TemporaryDirectory() as temporary:
-        launcher = SimpleNamespace(store=SimpleNamespace(root=Path(temporary)))
+        launcher = SimpleNamespace(
+            store=SimpleNamespace(root=Path(temporary), data={"settings": {}})
+        )
         command = breakblocks_launcher.Launcher.chat_browser_command(launcher, 456)
         assert "--chat-browser" in command
         assert command[command.index("--parent-handle") + 1] == "456"
@@ -243,7 +245,7 @@ def test_chat_notification_uses_launcher_branding_and_compact_title():
     assert "notification_logo_path()" in source
     assert "format_notification_title(notification.title())" in source
     assert "self.setMinimumWidth(390)" in source
-    assert "QTimer.singleShot(\n                8000," in source
+    assert 'preferences["chat_duration"] * 1000' in source
 
 
 def test_launcher_restores_and_clears_the_chat_unread_badge():
@@ -300,11 +302,14 @@ def test_native_irc_transport_and_credentials_are_not_used_by_launcher():
     assert not hasattr(breakblocks_launcher.Launcher, "send_irc_message")
 
 
-def test_chat_page_starts_the_browser_only_when_opened():
+def test_chat_starts_in_background_and_opening_the_tab_reuses_the_browser():
     source = inspect.getsource(breakblocks_launcher.Launcher.show_page)
     assert 'if name == "Chat"' in source
     assert "self.ensure_chat_browser()" in source
     constructor = inspect.getsource(breakblocks_launcher.Launcher.__init__)
+    assert "self.after(500, self.ensure_chat_browser)" in constructor
+    ensure = inspect.getsource(breakblocks_launcher.Launcher.ensure_chat_browser)
+    assert "process.poll() is None" in ensure
     assert "connect_irc_on_startup" not in constructor
 
 

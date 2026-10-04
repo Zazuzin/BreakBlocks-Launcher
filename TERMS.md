@@ -1,6 +1,6 @@
 # BreakBlocks Launcher Terms of Use
 
-Last updated: 28 September 2026
+Last updated: 4 October 2026
 
 **NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.**
@@ -15,8 +15,8 @@ For questions, use the
 
 BreakBlocks Launcher is an independent community launcher that installs and
 starts Minecraft: Java Edition, manages separate instances and mods, supports
-Microsoft sign-in, checks for launcher updates, and can connect to optional
-community services.
+Microsoft sign-in, checks for launcher and installed-mod updates, and starts
+BreakBlocks web chat in the background using the saved website session.
 
 The launcher package does not contain Minecraft. Game files, Java runtimes,
 loaders, mods, and updates are obtained from their respective providers when

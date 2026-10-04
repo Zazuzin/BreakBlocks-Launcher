@@ -1,6 +1,6 @@
 # BreakBlocks Launcher source review
 
-Version: **0.9.26 Alpha**
+Version: **0.9.27 Alpha**
 
 Windows, Ubuntu and Steam Deck share one source tree. Both source archives
 contain the complete code, assets, tests, licence files and packaging scripts.
@@ -34,3 +34,8 @@ use a client secret.
 `PRIVACY.md`, `TERMS.md`, `THIRD-PARTY-NOTICES.md` and `LICENSE` accompany the
 source. The remaining operator and website-policy questions are recorded in
 `LEGAL-RELEASE-CHECKLIST.md` and `WEBSITE-LEGAL-CHANGES.md` for Sheepy's review.
+
+The 0.9.27 settings and startup flow live in `launcher_preferences.py`,
+`settings_panel.py` and `startup_updates.py`. `tests/test_launcher_preferences.py`
+covers persistence, cleanup boundaries, retention, launch options and read-only
+update checks. Chat starts without switching away from the Launcher page.

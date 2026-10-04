@@ -25,7 +25,7 @@ runs the complete test suite and collects dependency licences. The finished
 `.deb` is written to `dist-release`. Install it with:
 
 ```bash
-sudo apt install ./dist-release/BreakBlocks-Launcher-0.9.26-Ubuntu-amd64.deb
+sudo apt install ./dist-release/BreakBlocks-Launcher-0.9.27-Ubuntu-amd64.deb
 ```
 
 The package includes launcher and Minecraft desktop identities and dock icons.
@@ -49,7 +49,7 @@ cp -R fonts third-party-licenses "dist/BreakBlocks Launcher/"
 mv "dist/BreakBlocks Launcher" dist/BreakBlocks-Launcher
 chmod +x "dist/BreakBlocks-Launcher/BreakBlocks Launcher"
 mkdir -p dist-release
-tar -C dist -czf dist-release/BreakBlocks-Launcher-0.9.26-SteamDeck-x86_64.tar.gz \
+tar -C dist -czf dist-release/BreakBlocks-Launcher-0.9.27-SteamDeck-x86_64.tar.gz \
   BreakBlocks-Launcher
 ```
 

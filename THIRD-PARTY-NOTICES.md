@@ -6,7 +6,7 @@ with each binary package control where they differ from this summary.
 
 ## Bundled runtime components
 
-| Component | Version used by 0.9.26 | Licence |
+| Component | Version used by 0.9.27 | Licence |
 | --- | --- | --- |
 | Python | 3.12 runtime | Python Software Foundation License Version 2 and component licences |
 | Tcl/Tk | Runtime version supplied with Python | Tcl/Tk licence terms |
