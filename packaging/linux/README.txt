@@ -1,10 +1,10 @@
-BreakBlocks Launcher 0.9.29 Alpha - Ubuntu amd64 package
+BreakBlocks Launcher 0.9.30 Alpha - Ubuntu amd64 package
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
 
 Install with:
-  sudo apt install ./BreakBlocks-Launcher-0.9.29-Ubuntu-amd64.deb
+  sudo apt install ./BreakBlocks-Launcher-0.9.30-Ubuntu-amd64.deb
 
 Future updates can be installed from the launcher's update prompt. The package
 is downloaded and verified first, then Ubuntu asks for administrator approval.
@@ -23,8 +23,10 @@ New notifications add to the unread number beside Chat while another launcher
 page is open; opening Chat clears it. Notifications use the BBC chicken logo,
 a compact title, and an eight-second display time.
 The chat also enters the background when Minecraft has focus, so new messages
-can produce notifications while playing. The Ctrl+Shift+F9 overlay is currently
-available in the Windows build.
+can produce notifications while playing. Ctrl+Shift+F9 opens the Linux overlay
+over windowed/borderless Minecraft using X11/XWayland. Start Minecraft through
+this launcher. If the shortcut does not respond, sign out and select Ubuntu on
+Xorg on the login screen. Native Wayland games are not supported.
 
 See PRIVACY.md, TERMS.md, THIRD-PARTY-NOTICES.md, and LICENSE for the launcher
 policies and licences.
@@ -43,7 +45,7 @@ Duplicate and Export offer an Include worlds and screenshots option. Portable
 instance ZIPs exclude launcher accounts and chat sessions. Importing creates a
 new instance and installs the launch files needed on that computer.
 
-Settings and startup in 0.9.29
+Settings and startup in 0.9.30
 -----------------------------
 Chat starts in the background with your saved website session. The launcher
 checks for launcher and compatible installed-mod updates at startup and shows
@@ -53,6 +55,6 @@ choose; turn automatic checks off under Startup and updates.
 Settings sections cover chat notification volume, duration and privacy,
 interface/text size, backup count and space limits, Minecraft window defaults,
 Java browsing/testing, storage usage/unused archive cleanup, log retention,
-custom JVM options and Minecraft download controls. Windows also has overlay
+custom JVM options and Minecraft download controls. Both desktop builds have overlay
 enablement, hotkey and text-size settings. Save Settings to apply changes.
 Edit Instance -> Window size overrides the global Minecraft window defaults.

@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.29 Alpha
+BreakBlocks Launcher 0.9.30 Alpha
 Windows and Linux complete source review copy
 
 Start with BUILD-WINDOWS.md or BUILD-LINUX.md. This archive contains the full

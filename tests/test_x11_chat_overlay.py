@@ -170,6 +170,10 @@ def test_linux_chat_and_overlay():
             )
             shortcut()
             wait_for(lambda: overlay.visible, "The overlay did not reopen")
+            reopened = []
+            view.page().runJavaScript("document.getElementById('message').value", reopened.append)
+            wait_for(lambda: reopened, "Chat lost its session when reopened")
+            assert reopened == typed, "Moving chat replaced the page or discarded typed text"
             QTest.keyClick(view.focusProxy() or view, Qt.Key_Escape)
             wait_for(lambda: not overlay.visible, "Escape did not close the overlay")
             overlay.apply_preferences({"overlay_enabled": False})
