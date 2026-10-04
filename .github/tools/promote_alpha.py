@@ -145,7 +145,7 @@ def prepare(request: dict, assets: Path) -> None:
     notes.write_text(
         "Alpha release for launcher update testing.\n\n"
         + changes.split("\n", 1)[1].strip()
-        + "\n\nTo test updating, use a launcher older than 0.9.27 and select the Alpha update channel. "
+        + f"\n\nTo test updating, use a launcher older than {version} and select the Alpha update channel. "
         "This release is not offered on the Stable channel.\n\n"
         "The Windows executable is unsigned, so Windows SmartScreen or your browser may warn. "
         "Download only from this official repository and verify SHA256SUMS.txt. "
