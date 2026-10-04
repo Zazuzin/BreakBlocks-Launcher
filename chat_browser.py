@@ -298,6 +298,8 @@ class NativeHost:
         user32.IsWindow.restype = ctypes.c_int
         user32.GetParent.argtypes = (window_handle,)
         user32.GetParent.restype = window_handle
+        user32.GetTopWindow.argtypes = (window_handle,)
+        user32.GetTopWindow.restype = window_handle
         user32.SetParent.argtypes = (window_handle, window_handle)
         user32.SetParent.restype = window_handle
         user32.GetWindowLongPtrW.argtypes = (window_handle, ctypes.c_int)
@@ -382,6 +384,14 @@ class NativeHost:
             self.child_handle = child_handle
             if not self._embed_windows_child(user32):
                 return True
+
+        # Tk can map or raise its loading panel after the background browser
+        # has attached. Geometry can stay unchanged while the browser becomes
+        # hidden or covered, so repair visibility/stacking before the size check.
+        if not user32.GetWindowLongPtrW(child_handle, -16) & 0x10000000 or (
+            user32.GetTopWindow(self.parent_handle) != child_handle
+        ):
+            user32.SetWindowPos(child_handle, 0, 0, 0, 0, 0, 0x0001 | 0x0002 | 0x0010 | 0x0040)
 
         class Rect(ctypes.Structure):
             _fields_ = (
@@ -506,6 +516,7 @@ def run_browser(
     unread_file: pathlib.Path,
     visible_file: pathlib.Path,
     game_process_file: pathlib.Path | None = None,
+    ready_file: pathlib.Path | None = None,
 ) -> int:
     if sys.platform.startswith("linux"):
         # Tk runs through X11/XWayland.  Matching that backend permits the Qt
@@ -792,6 +803,8 @@ def run_browser(
     log_browser_message(
         f"attached child window {int(view.winId())} to launcher host {parent_handle}"
     )
+    if ready_file is not None:
+        ready_file.write_text(str(os.getpid()), encoding="ascii")
 
     timer = QTimer(view)
     unavailable_checks = 0
@@ -860,6 +873,7 @@ def main(arguments: list[str] | None = None) -> int:
     parser.add_argument("--unread-file", required=True, type=pathlib.Path)
     parser.add_argument("--visible-file", required=True, type=pathlib.Path)
     parser.add_argument("--game-process-file", type=pathlib.Path)
+    parser.add_argument("--ready-file", type=pathlib.Path)
     options = parser.parse_args(arguments)
     try:
         return run_browser(
@@ -869,6 +883,7 @@ def main(arguments: list[str] | None = None) -> int:
             options.unread_file,
             options.visible_file,
             options.game_process_file,
+            options.ready_file,
         )
     except Exception:
         log_browser_message("could not start or remain attached")

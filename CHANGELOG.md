@@ -2,6 +2,7 @@
 
 ## 0.9.29 Alpha (Windows and Linux)
 
+- Restore hidden or covered embedded Windows chat even when the host size has not changed; clear the loading panel after the current chat helper confirms attachment.
 - Preserve the launcher runtime paths when starting embedded chat, including the bundled Linux Qt libraries.
 - Show chat process errors and a Reload Chat control instead of a permanent loading message.
 - Check background chat startup using the built executable, its real launcher parent and first opening of the Chat page.

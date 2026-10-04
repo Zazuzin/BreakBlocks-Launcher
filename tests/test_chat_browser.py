@@ -148,6 +148,8 @@ def test_windows_resize_skips_unchanged_geometry_and_resizes_after_parent_change
     fake_api = SimpleNamespace(
         IsWindow=lambda _handle: True,
         GetParent=lambda _child: host.parent_handle,
+        GetTopWindow=lambda _parent: 77,
+        GetWindowLongPtrW=lambda _child, _index: 0x10000000,
         GetClientRect=get_client_rect,
         MoveWindow=move_window,
     )
@@ -162,6 +164,44 @@ def test_windows_resize_skips_unchanged_geometry_and_resizes_after_parent_change
     host.parent_handle = 100
     assert host._resize_windows()
     assert len(moves) == 3
+
+
+def test_windows_chat_recovers_from_being_hidden_or_covered_without_resizing():
+    visible = [0x10000000]
+    top_child = [77]
+    raised = []
+    host = chat_browser.NativeHost(99, 77, qt_view=SimpleNamespace(winId=lambda: 77))
+
+    def get_client_rect(_parent, rect):
+        rect._obj.right, rect._obj.bottom = 640, 480
+        return 1
+
+    def position(*arguments):
+        raised.append(arguments)
+        visible[0] |= 0x10000000
+        top_child[0] = 77
+        return 1
+
+    api = SimpleNamespace(
+        IsWindow=lambda _handle: True,
+        GetParent=lambda _child: 99,
+        GetTopWindow=lambda _parent: top_child[0],
+        GetWindowLongPtrW=lambda _child, _index: visible[0],
+        SetWindowPos=position,
+        GetClientRect=get_client_rect,
+        MoveWindow=lambda *_arguments: 1,
+    )
+    host._windows_api = lambda: (api, ctypes.c_void_p)
+    assert host._resize_windows()
+    assert not raised
+    visible[0] = 0
+    assert host._resize_windows()
+    assert visible[0] & 0x10000000
+    top_child[0] = 88
+    assert host._resize_windows()
+    assert top_child[0] == 77
+    assert len(raised) == 2
+    assert all(arguments[-1] & 0x0010 for arguments in raised)  # SWP_NOACTIVATE
 
 
 def test_parent_handle_validation_rejects_invalid_values():
@@ -212,6 +252,9 @@ def test_launcher_starts_browser_with_a_dedicated_local_profile():
         shutdown = Path(command[command.index("--shutdown-file") + 1])
         assert shutdown.parent == profile
         assert not shutdown.exists()
+        ready = Path(command[command.index("--ready-file") + 1])
+        assert ready.parent == profile
+        assert not ready.exists()
         unread = Path(command[command.index("--unread-file") + 1])
         visible = Path(command[command.index("--visible-file") + 1])
         assert unread == profile / chat_browser.UNREAD_FILE_NAME
@@ -255,9 +298,11 @@ def test_chat_process_failure_displays_an_error_and_reload_control():
     launcher = SimpleNamespace(
         closing=False,
         chat_browser_process=SimpleNamespace(poll=lambda: 1),
+        chat_browser_ready_file=SimpleNamespace(unlink=lambda **_options: None),
         chat_browser_shutdown_file=None,
         chat_browser_status=SimpleNamespace(set=messages.append),
         chat_browser_retry_button=SimpleNamespace(pack=lambda **_options: retry_shown.append(True)),
+        chat_browser_fallback=SimpleNamespace(pack=lambda **_options: None),
     )
     launcher.show_chat_startup_failure = lambda message: (
         breakblocks_launcher.Launcher.show_chat_startup_failure(launcher, message)
@@ -268,6 +313,30 @@ def test_chat_process_failure_displays_an_error_and_reload_control():
     assert retry_shown == [True]
     assert "Reload Chat" in messages[-1]
     assert "log" in messages[-1]
+
+
+def test_loading_panel_only_clears_after_the_current_browser_attaches():
+    with tempfile.TemporaryDirectory() as temporary:
+        ready = Path(temporary) / "ready"
+        hidden = []
+        launcher = SimpleNamespace(
+            closing=False,
+            chat_browser_process=SimpleNamespace(poll=lambda: None, pid=456),
+            chat_browser_ready_file=ready,
+            refresh_chat_unread_badge=lambda: None,
+            chat_browser_fallback=SimpleNamespace(pack_forget=lambda: hidden.append(True)),
+            chat_browser_status=SimpleNamespace(set=lambda _message: None),
+            after=lambda *_args: 1,
+            monitor_chat_browser=lambda: None,
+        )
+        for value in (None, "not ready", "123"):
+            if value is not None:
+                ready.write_text(value, encoding="ascii")
+            breakblocks_launcher.Launcher.monitor_chat_browser(launcher)
+            assert not hidden
+        ready.write_text("456", encoding="ascii")
+        breakblocks_launcher.Launcher.monitor_chat_browser(launcher)
+        assert hidden == [True]
 
 
 def test_browser_grants_and_presents_breakblocks_notifications():

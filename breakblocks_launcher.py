@@ -3233,6 +3233,7 @@ class Launcher(ctk.CTk):
         )
         self.chat_browser_host.grid(row=0, column=0, sticky="nsew")
         fallback = ctk.CTkFrame(self.chat_browser_host, fg_color=DARK_SURFACE, corner_radius=0)
+        self.chat_browser_fallback = fallback
         fallback.pack(fill="both", expand=True)
         ctk.CTkLabel(
             fallback,
@@ -3260,6 +3261,7 @@ class Launcher(ctk.CTk):
 
     def show_chat_startup_failure(self, message):
         self.chat_browser_status.set(message)
+        self.chat_browser_fallback.pack(fill="both", expand=True)
         self.chat_browser_retry_button.pack(pady=16)
 
     def chat_browser_command(self, parent_handle):
@@ -3274,6 +3276,8 @@ class Launcher(ctk.CTk):
             f".stop-{os.getpid()}-{parent_handle}"
         )
         self.chat_browser_shutdown_file.unlink(missing_ok=True)
+        self.chat_browser_ready_file = profile_directory / (f".ready-{os.getpid()}-{parent_handle}")
+        self.chat_browser_ready_file.unlink(missing_ok=True)
         self.chat_unread_file = getattr(
             self,
             "chat_unread_file",
@@ -3292,6 +3296,8 @@ class Launcher(ctk.CTk):
             str(profile_directory),
             "--shutdown-file",
             str(self.chat_browser_shutdown_file),
+            "--ready-file",
+            str(self.chat_browser_ready_file),
             "--unread-file",
             str(self.chat_unread_file),
             "--visible-file",
@@ -3356,12 +3362,19 @@ class Launcher(ctk.CTk):
         return_code = process.poll()
         if return_code is None:
             self.refresh_chat_unread_badge()
-            self.chat_browser_status.set(
-                "Secure BreakBlocks web chat — your website session stays on this device."
-            )
+            try:
+                ready_pid = int(self.chat_browser_ready_file.read_text(encoding="ascii"))
+            except (OSError, ValueError):
+                ready_pid = None
+            if ready_pid == process.pid:
+                self.chat_browser_fallback.pack_forget()
+                self.chat_browser_status.set(
+                    "Secure BreakBlocks web chat — your website session stays on this device."
+                )
             self.chat_browser_monitor_id = self.after(1500, self.monitor_chat_browser)
             return
         self.chat_browser_process = None
+        self.chat_browser_ready_file.unlink(missing_ok=True)
         if self.chat_browser_shutdown_file is not None:
             self.chat_browser_shutdown_file.unlink(missing_ok=True)
             self.chat_browser_shutdown_file = None
@@ -3449,6 +3462,9 @@ class Launcher(ctk.CTk):
             log_launcher_error("Stopping embedded chat browser", error)
         finally:
             self.chat_visible_file.unlink(missing_ok=True)
+            ready_file = getattr(self, "chat_browser_ready_file", None)
+            if ready_file is not None:
+                ready_file.unlink(missing_ok=True)
             if shutdown_file is not None:
                 shutdown_file.unlink(missing_ok=True)
 

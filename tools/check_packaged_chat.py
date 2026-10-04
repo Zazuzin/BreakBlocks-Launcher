@@ -34,6 +34,9 @@ class ChatHost(ctk.CTk):
     def monitor_chat_browser(self):
         pass
 
+    def refresh_chat_unread_badge(self):
+        pass
+
 
 def check(executable: pathlib.Path) -> None:
     with tempfile.TemporaryDirectory(prefix="breakblocks-chat-check-") as temporary:
@@ -89,6 +92,7 @@ def check(executable: pathlib.Path) -> None:
                     time.sleep(0.05)
                 else:
                     raise AssertionError(f"Chat never attached and loaded:\n{output}")
+                assert root.chat_browser_ready_file.read_text(encoding="ascii") == str(process.pid)
                 page.pack(fill="both", expand=True)
                 root.update()
                 deadline = time.monotonic() + 4
@@ -111,6 +115,26 @@ def check(executable: pathlib.Path) -> None:
                     assert name.value.startswith(
                         "Qt"
                     ), f"Loading panel covers the browser: top child class is {name.value!r}"
+                    # Recover even when the host size has not changed.
+                    root.chat_browser_fallback.lift()
+                    user32.ShowWindow.argtypes = (ctypes.c_void_p, ctypes.c_int)
+                    user32.ShowWindow(top, 0)
+                    deadline = time.monotonic() + 3
+                    user32.IsWindowVisible.argtypes = (ctypes.c_void_p,)
+                    while time.monotonic() < deadline:
+                        root.update()
+                        top_now = user32.GetTopWindow(root.chat_browser_host.winfo_id())
+                        if top_now == top and user32.IsWindowVisible(top):
+                            break
+                        time.sleep(0.05)
+                    else:
+                        raise AssertionError("Chat did not recover after being hidden and covered")
+                    print("Packaged chat recovered from hidden and covered native windows.")
+                Launcher.monitor_chat_browser(root)
+                root.update()
+                assert (
+                    not root.chat_browser_fallback.winfo_manager()
+                ), "Loading panel was not cleared"
                 print(output, flush=True)
                 print("Packaged chat started in the background and survived opening Chat.")
             finally:
