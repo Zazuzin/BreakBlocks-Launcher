@@ -51,10 +51,7 @@ def check(executable: pathlib.Path) -> None:
             root.font_heading = ctk.CTkFont(size=20, weight="bold")
             root.font_body = ctk.CTkFont(size=13)
             page = ctk.CTkFrame(root)
-            page.pack(fill="both", expand=True)
             root.chat_web_ui(page)
-            root.update()
-            page.pack_forget()
             root.update()
             try:
                 with (
@@ -89,6 +86,21 @@ def check(executable: pathlib.Path) -> None:
                     root.update()
                     assert process.poll() is None, log_path.read_text(errors="replace")
                     time.sleep(0.05)
+                if os.name == "nt":
+                    user32 = ctypes.WinDLL("user32", use_last_error=True)
+                    user32.GetTopWindow.argtypes = (ctypes.c_void_p,)
+                    user32.GetTopWindow.restype = ctypes.c_void_p
+                    user32.GetClassNameW.argtypes = (
+                        ctypes.c_void_p,
+                        ctypes.c_wchar_p,
+                        ctypes.c_int,
+                    )
+                    top = user32.GetTopWindow(root.chat_browser_host.winfo_id())
+                    name = ctypes.create_unicode_buffer(256)
+                    user32.GetClassNameW(top, name, len(name))
+                    assert name.value.startswith(
+                        "Qt"
+                    ), f"Loading panel covers the browser: top child class is {name.value!r}"
                 print(output, flush=True)
                 print("Packaged chat started in the background and survived opening Chat.")
             finally:
