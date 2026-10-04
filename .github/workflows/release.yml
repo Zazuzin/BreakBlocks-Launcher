@@ -97,6 +97,7 @@ jobs:
           python -m ruff check *.py tests tools
           export PYTHONPATH="$PWD"
           for test_file in tests/test_*.py; do python "$test_file"; done
+          QTWEBENGINE_DISABLE_SANDBOX=1 xvfb-run -a python tools/check_linux_desktop.py
       - name: Collect third-party licences
         run: python tools/collect_dependency_licenses.py --output third-party-licenses
       - name: Build Linux package

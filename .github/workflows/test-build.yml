@@ -62,6 +62,7 @@ jobs:
           export PYTHONPATH="$PWD"
           for test_file in tests/test_*.py; do python "$test_file"; done
           xvfb-run -a python tests/test_x11_chat_focus.py
+          QTWEBENGINE_DISABLE_SANDBOX=1 xvfb-run -a python tools/check_linux_desktop.py
       - name: Build Linux test packages
         run: |
           python tools/collect_dependency_licenses.py --output third-party-licenses

@@ -9,7 +9,7 @@ import tempfile
 import time
 
 
-def check(executable, ubuntu_package=None):
+def check(executable=None, ubuntu_package=None):
     desktop = subprocess.Popen(["openbox", "--sm-disable"], stdin=subprocess.DEVNULL)
     try:
         time.sleep(0.5)
@@ -18,11 +18,12 @@ def check(executable, ubuntu_package=None):
         environment = dict(os.environ, QT_QPA_PLATFORM="wayland")
         # A desktop Qt preference must not turn the Tk chat child into a
         # separate Wayland window. Both frozen parent and child are checked.
-        subprocess.run(
-            [sys.executable, "tools/check_packaged_chat.py", str(executable)],
-            env=environment,
-            check=True,
-        )
+        if executable is not None:
+            subprocess.run(
+                [sys.executable, "tools/check_packaged_chat.py", str(executable)],
+                env=environment,
+                check=True,
+            )
         if ubuntu_package is not None:
             with tempfile.TemporaryDirectory(prefix="breakblocks-deb-check-") as temporary:
                 subprocess.run(
@@ -53,7 +54,10 @@ def check(executable, ubuntu_package=None):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
-    parser.add_argument("executable", type=pathlib.Path)
+    parser.add_argument("executable", type=pathlib.Path, nargs="?")
     parser.add_argument("--ubuntu-package", type=pathlib.Path)
     options = parser.parse_args()
-    check(options.executable.resolve(strict=True), options.ubuntu_package)
+    check(
+        options.executable.resolve(strict=True) if options.executable else None,
+        options.ubuntu_package,
+    )

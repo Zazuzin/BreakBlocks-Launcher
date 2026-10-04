@@ -164,14 +164,18 @@ class LinuxChatOverlay(QObject):
             round(height * 0.84 / scale),
         )
         self.window.layout().activate()
+        # Inside the overlay both widgets belong to Qt. Give the browser a
+        # real QWidget parent so Qt routes keyboard focus into WebEngine.
+        # Native X11 parenting alone leaves two independent Qt focus windows.
+        self.host.qt_view.setParent(self.browser_area)
         self.host.parent_handle = int(self.browser_area.winId())
         if not self.host._embed_x11_child():
-            self.host.parent_handle = self.launcher_handle
-            self.host.resize()
+            self.return_to_launcher()
             self.game_window = 0
             return
         self.visible = True
         self.window.show()
+        self.host.qt_view.show()
         self.window.layout().activate()
         if not self.host.resize():
             self.hide()
@@ -186,16 +190,24 @@ class LinuxChatOverlay(QObject):
         self.release_hotkey()
         print("Chat overlay: Linux overlay shown", flush=True)
 
+    def return_to_launcher(self):
+        self.host.parent_handle = self.launcher_handle
+        self.host.qt_view.setParent(None)
+        self.host.qt_view.setWindowFlags(Qt.FramelessWindowHint | Qt.BypassWindowManagerHint)
+        if not self.host.resize():
+            print("Chat overlay: chat could not return to launcher", flush=True)
+            return
+        self.host.qt_view.show()
+        self.host.resize()
+
     def hide(self, restore_focus=True):
         if not self.visible:
             return
         self.visible = False
         self.visible_file.unlink(missing_ok=True)
         self.release_hotkey()
-        self.host.parent_handle = self.launcher_handle
         try:
-            if not self.host.resize():
-                print("Chat overlay: chat could not return to launcher", flush=True)
+            self.return_to_launcher()
         finally:
             self.window.hide()
             if (
