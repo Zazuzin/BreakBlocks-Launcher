@@ -57,6 +57,17 @@ def check(executable: pathlib.Path) -> None:
             page = ctk.CTkFrame(root)
             root.chat_web_ui(page)
             root.update()
+            log_path = (
+                folder / "data/BreakBlocks Launcher/launcher.log"
+                if os.name == "nt"
+                else folder / "state/breakblocks-launcher/launcher.log"
+            )
+            log_offset = (
+                len(log_path.read_text(encoding="utf-8", errors="replace"))
+                if log_path.exists()
+                else 0
+            )
+            process = None
             try:
                 with (
                     mock.patch.object(sys, "frozen", True, create=True),
@@ -66,16 +77,11 @@ def check(executable: pathlib.Path) -> None:
                 process = root.chat_browser_process
                 assert process is not None, "Chat did not create its process"
                 deadline = time.monotonic() + 25
-                log_path = (
-                    folder / "data/BreakBlocks Launcher/launcher.log"
-                    if os.name == "nt"
-                    else folder / "state/breakblocks-launcher/launcher.log"
-                )
                 output = ""
                 while time.monotonic() < deadline:
                     root.update()
                     if log_path.exists():
-                        output = log_path.read_text(encoding="utf-8", errors="replace")
+                        output = log_path.read_text(encoding="utf-8", errors="replace")[log_offset:]
                     if process.poll() is not None:
                         raise AssertionError(f"Chat exited with {process.returncode}:\n{output}")
                     if "loading https://irc.breakblocks.com" in output:
@@ -110,8 +116,8 @@ def check(executable: pathlib.Path) -> None:
             finally:
                 root.stop_chat_browser()
                 root.destroy()
-                if root.chat_browser_process is not None:
-                    root.chat_browser_process.wait(timeout=5)
+                if process is not None:
+                    process.wait(timeout=5)
 
 
 def check_launcher_startup(executable: pathlib.Path, folder: pathlib.Path) -> None:
