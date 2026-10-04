@@ -6,6 +6,7 @@
 - Preserve the launcher runtime paths when starting embedded chat, including the bundled Linux Qt libraries.
 - Show chat process errors and a Reload Chat control instead of a permanent loading message.
 - Check background chat startup using the built executable, its real launcher parent and first opening of the Chat page.
+- Include Pillow's Tk helper in portable Linux packages so bundled launcher images load correctly.
 
 ## 0.9.28 Alpha (Windows and Linux)
 
