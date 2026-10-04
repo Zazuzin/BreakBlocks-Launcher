@@ -3681,7 +3681,7 @@ class Launcher(ctk.CTk):
                 wraplength=720,
             ).pack(fill="x", padx=20, pady=(4, 10))
             return body
-        ctk.CTkLabel(
+        description = ctk.CTkLabel(
             body,
             text=subtitle,
             text_color=MUTED,
@@ -3689,7 +3689,15 @@ class Launcher(ctk.CTk):
             anchor="w",
             justify="left",
             wraplength=720,
-        ).pack(fill="x", padx=20, pady=(4, 10))
+        )
+        description.pack(fill="x", padx=20, pady=(4, 10))
+
+        def wrap_description(event):
+            wrapping = max(120, round(event.width / self.display_scale - 40))
+            if description.cget("wraplength") != wrapping:
+                description.configure(wraplength=wrapping)
+
+        body.bind("<Configure>", wrap_description, add="+")
 
         def toggle():
             expanded = bool(body.winfo_manager())

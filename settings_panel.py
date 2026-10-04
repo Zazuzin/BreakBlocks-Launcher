@@ -151,18 +151,16 @@ def build(launcher, page, colors):
         "Background checks notify you about available updates. Installation stays your choice.",
         1,
     )
-    switch(
-        card, "Keep the launcher visible while Minecraft is running", launcher.keep_launcher_open
-    )
+    switch(card, "Keep the launcher visible while Minecraft runs", launcher.keep_launcher_open)
     switch(card, "Automatic launcher update checks", launcher.update_enabled)
     switch(
         card,
-        "Check launcher updates when the launcher opens",
+        "Check launcher updates at startup",
         launcher.preference_vars["update_check_startup"],
     )
     switch(
         card,
-        "Check installed mod updates when the launcher opens",
+        "Check installed mods at startup",
         launcher.preference_vars["mods_check_startup"],
     )
     option(card, "Launcher update channel", launcher.update_channel, ["stable", "alpha"])
@@ -249,7 +247,7 @@ def build(launcher, page, colors):
     )
     switch(
         card,
-        "Automatically back up before mod and loader changes",
+        "Automatic backups before mod or loader changes",
         launcher.preference_vars["automatic_backups"],
     )
     option(
