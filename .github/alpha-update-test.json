@@ -1,7 +1,10 @@
 {
-  "phase": "prepare",
+  "phase": "publish",
   "version": "0.9.29",
   "tag": "v0.9.29-alpha",
   "source": "48917cac105c996d40fd2a2f87d69cbddf1b9016",
-  "run": 37197050361
+  "run": 37197050361,
+  "release_id": 402977592,
+  "manifest_sha256": "7e14b0d8055304dce489b92012be47793077eb0625e9fba9f54bdeea9db62f42",
+  "checksums_sha256": "f0fc6ae7f1534dc1a35f5b1be86af3bc35514f7b889e3c3a00738919d1935e22"
 }
