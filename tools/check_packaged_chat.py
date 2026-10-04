@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
 import ctypes
 import json
 import os
@@ -37,6 +38,25 @@ class ChatHost(ctk.CTk):
 
     def refresh_chat_unread_badge(self):
         pass
+
+
+@contextlib.contextmanager
+def ubuntu_log_output(path, enabled):
+    """Mirror the Ubuntu entry script's stdout/stderr redirection."""
+    if not enabled:
+        yield
+        return
+    path.parent.mkdir(parents=True, exist_ok=True)
+    native_spawn = subprocess.Popen
+    with path.open("ab") as stream:
+
+        def spawn(*arguments, **options):
+            options.setdefault("stdout", stream)
+            options.setdefault("stderr", subprocess.STDOUT)
+            return native_spawn(*arguments, **options)
+
+        with mock.patch.object(subprocess, "Popen", spawn):
+            yield
 
 
 def check(executable: pathlib.Path, python_script=False) -> None:
@@ -79,6 +99,7 @@ def check(executable: pathlib.Path, python_script=False) -> None:
                         sys, "executable", sys.executable if python_script else str(executable)
                     ),
                     mock.patch.object(breakblocks_launcher, "APP_DIR", executable.parent),
+                    ubuntu_log_output(log_path, python_script),
                 ):
                     root.ensure_chat_browser()
                 process = root.chat_browser_process
@@ -205,16 +226,17 @@ def check_launcher_startup(
         ),
         encoding="utf-8",
     )
-    process = subprocess.Popen(
-        ([sys.executable, str(executable)] if python_script else [str(executable)]),
-        stdin=subprocess.DEVNULL,
-        start_new_session=os.name != "nt",
-    )
     log_path = (
         data / "launcher.log"
         if os.name == "nt"
         else folder / "state/breakblocks-launcher/launcher.log"
     )
+    with ubuntu_log_output(log_path, python_script):
+        process = subprocess.Popen(
+            ([sys.executable, str(executable)] if python_script else [str(executable)]),
+            stdin=subprocess.DEVNULL,
+            start_new_session=os.name != "nt",
+        )
     try:
         deadline = time.monotonic() + 30
         output = ""
@@ -228,7 +250,14 @@ def check_launcher_startup(
         else:
             raise AssertionError(f"Real launcher did not start chat:\n{output}")
         print(output, flush=True)
-        print("Frozen launcher automatically started its frozen chat child.", flush=True)
+        print(
+            (
+                "Ubuntu launcher automatically started its vendored chat child."
+                if python_script
+                else "Frozen launcher automatically started its frozen chat child."
+            ),
+            flush=True,
+        )
     finally:
         if log_path.exists():
             output = log_path.read_text(encoding="utf-8", errors="replace")
