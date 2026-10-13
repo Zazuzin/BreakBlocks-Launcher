@@ -1,10 +1,10 @@
-BreakBlocks Launcher 0.9.30 Alpha - Ubuntu amd64 package
+BreakBlocks Launcher 0.9.31 Alpha - Ubuntu amd64 package
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
 
 Install with:
-  sudo apt install ./BreakBlocks-Launcher-0.9.30-Ubuntu-amd64.deb
+  sudo apt install ./BreakBlocks-Launcher-0.9.31-Ubuntu-amd64.deb
 
 Future updates can be installed from the launcher's update prompt. The package
 is downloaded and verified first, then Ubuntu asks for administrator approval.
@@ -45,7 +45,7 @@ Duplicate and Export offer an Include worlds and screenshots option. Portable
 instance ZIPs exclude launcher accounts and chat sessions. Importing creates a
 new instance and installs the launch files needed on that computer.
 
-Settings and startup in 0.9.30
+Settings and startup in 0.9.31
 -----------------------------
 Chat starts in the background with your saved website session. The launcher
 checks for launcher and compatible installed-mod updates at startup and shows
@@ -58,3 +58,9 @@ Java browsing/testing, storage usage/unused archive cleanup, log retention,
 custom JVM options and Minecraft download controls. Both desktop builds have overlay
 enablement, hotkey and text-size settings. Save Settings to apply changes.
 Edit Instance -> Window size overrides the global Minecraft window defaults.
+
+HTTPS CERTIFICATES
+------------------
+The launcher includes its own Mozilla trusted root certificate bundle for
+Modrinth, Minecraft downloads and update checks. No SteamOS system changes are
+required. Certificate and hostname verification remain enabled.

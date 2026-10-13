@@ -1,6 +1,6 @@
 # Source review notes
 
-Reviewed: 4 October 2026. Source version: **0.9.30 Alpha**.
+Reviewed: 13 October 2026. Source version: **0.9.31 Alpha**.
 
 ## Source contents
 

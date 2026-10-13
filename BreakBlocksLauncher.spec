@@ -4,6 +4,7 @@ from PyInstaller.utils.hooks import collect_data_files
 
 
 datas = collect_data_files("customtkinter")
+datas += collect_data_files("certifi")
 datas += [("assets", "assets")]
 datas += [
     ("LICENSE", "."),

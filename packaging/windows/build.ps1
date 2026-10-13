@@ -21,6 +21,7 @@ if ($LASTEXITCODE) { exit $LASTEXITCODE }
 $env:PYTHONPATH = $ProjectRoot
 @(
     "tests/test_chat_browser.py",
+    "tests/test_tls_certificates.py",
     "tests/test_windows_chat_overlay.py",
     "tests/test_instance_archives.py",
     "tests/test_instance_recovery_flow.py",
@@ -46,6 +47,8 @@ Copy-Item LICENSE, PRIVACY.md, TERMS.md, THIRD-PARTY-NOTICES.md $PackageRoot -Fo
 Copy-Item $Licences (Join-Path $PackageRoot "third-party-licenses") -Recurse -Force
 
 & $Python tools/check_packaged_chat.py (Join-Path $PackageRoot "BreakBlocks Launcher.exe")
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+& $Python tools/check_packaged_tls.py (Join-Path $PackageRoot "BreakBlocks Launcher.exe")
 if ($LASTEXITCODE) { exit $LASTEXITCODE }
 
 $Output = Join-Path $ProjectRoot "dist-release"

@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.30 Alpha - Linux/Steam Deck test build
+BreakBlocks Launcher 0.9.31 Alpha - Linux/Steam Deck test build
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -48,7 +48,7 @@ Chat and launcher features
 
 Important release note
 ----------------------
-Update checks activate after 0.9.30 is published as a GitHub Release with
+Update checks activate after 0.9.31 is published as a GitHub Release with
 breakblocks-update.json and the matching platform packages. The launcher
 verifies the package before installation. Ubuntu asks for the normal
 administrator approval; portable Steam Deck builds replace themselves and
@@ -115,7 +115,7 @@ Duplicate and Export offer an Include worlds and screenshots option. Portable
 instance ZIPs exclude launcher accounts and chat sessions. Importing creates a
 new instance and installs the launch files needed on that computer.
 
-Settings and startup in 0.9.30
+Settings and startup in 0.9.31
 -----------------------------
 Chat starts in the background with your saved website session. The launcher
 checks for launcher and compatible installed-mod updates at startup and shows
@@ -128,3 +128,9 @@ Java browsing/testing, storage usage/unused archive cleanup, log retention,
 custom JVM options and Minecraft download controls. Both desktop builds have overlay
 enablement, hotkey and text-size settings. Save Settings to apply changes.
 Edit Instance -> Window size overrides the global Minecraft window defaults.
+
+HTTPS CERTIFICATES
+------------------
+The launcher includes its own Mozilla trusted root certificate bundle for
+Modrinth, Minecraft downloads and update checks. No SteamOS system changes are
+required. Certificate and hostname verification remain enabled.

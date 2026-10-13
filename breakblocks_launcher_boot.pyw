@@ -47,6 +47,13 @@ sys.stdout = log
 sys.stderr = log
 
 try:
+    from tls_certificates import configure_certificates
+
+    configure_certificates()
+    if "--check-network" in sys.argv:
+        from tls_certificates import check_network
+
+        raise SystemExit(check_network())
     if os.name == "nt" and PACKAGED_RUNTIME:
         import ctypes
 
@@ -62,6 +69,8 @@ try:
 except Exception:
     traceback.print_exc()
     log.flush()
+    if "--check-network" in sys.argv:
+        raise SystemExit(1)
     try:
         import ctypes
 

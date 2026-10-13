@@ -1,4 +1,4 @@
-BreakBlocks Launcher 0.9.30 Alpha - Steam Deck x86_64
+BreakBlocks Launcher 0.9.31 Alpha - Steam Deck x86_64
 
 NOT AN OFFICIAL MINECRAFT PRODUCT. NOT APPROVED BY OR ASSOCIATED WITH
 MOJANG OR MICROSOFT.
@@ -28,7 +28,7 @@ Keep the entire folder together; do not move only the launcher script.
 
 FEATURES
 --------
-The chat and launcher features match the Ubuntu 0.9.30 build. Ctrl+Shift+F9
+The chat and launcher features match the Ubuntu 0.9.31 build. Ctrl+Shift+F9
 opens the chat overlay over windowed/borderless Minecraft using X11/XWayland
 in Desktop Mode. Start Minecraft through this launcher. Native Wayland games
 and Steam Deck Gaming Mode do not support this overlay.
@@ -94,7 +94,7 @@ Duplicate and Export offer an Include worlds and screenshots option. Portable
 instance ZIPs exclude launcher accounts and chat sessions. Importing creates a
 new instance and installs the launch files needed on that computer.
 
-Settings and startup in 0.9.30
+Settings and startup in 0.9.31
 -----------------------------
 Chat starts in the background with your saved website session. The launcher
 checks for launcher and compatible installed-mod updates at startup and shows
@@ -107,3 +107,9 @@ Java browsing/testing, storage usage/unused archive cleanup, log retention,
 custom JVM options and Minecraft download controls. Both desktop builds have overlay
 enablement, hotkey and text-size settings. Save Settings to apply changes.
 Edit Instance -> Window size overrides the global Minecraft window defaults.
+
+HTTPS CERTIFICATES
+------------------
+The launcher includes its own Mozilla trusted root certificate bundle for
+Modrinth, Minecraft downloads and update checks. No SteamOS system changes are
+required. Certificate and hostname verification remain enabled.

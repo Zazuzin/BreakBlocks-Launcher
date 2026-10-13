@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.9.31 Alpha (Windows and Linux)
+
+- Include Mozilla trusted root certificates and load them for Python HTTPS requests, fixing Modrinth certificate verification on Steam Deck.
+- Keep user-selected CA files and full certificate/hostname verification. The same trust setup covers mod downloads, Minecraft metadata and launcher updates.
+- Check HTTPS to Modrinth, GitHub and Minecraft from the built Windows, portable Linux and Ubuntu packages with host certificate paths unavailable.
+- Include the certificate bundle licence in all packages and test rejection of self-signed servers and mismatched hostnames.
+
 ## 0.9.30 Alpha (Windows and Linux)
 
 - Keep Linux web chat on the X11 backend used by the launcher, including when the desktop prefers Wayland.

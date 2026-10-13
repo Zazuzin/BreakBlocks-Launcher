@@ -18,6 +18,7 @@ PACKAGES = {
     "packaging": "25.0",
     "PySide6": "6.8.3",
     "PyInstaller": "6.16.0",
+    "certifi": "2026.7.22",
 }
 LICENCE_NAMES = ("license", "licence", "copying", "notice")
 PROJECT_ROOT = pathlib.Path(__file__).resolve().parents[1]

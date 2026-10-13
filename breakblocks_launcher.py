@@ -27,6 +27,10 @@ VENDOR_DIR = APP_DIR / "vendor"
 if VENDOR_DIR.is_dir():
     sys.path.insert(0, str(VENDOR_DIR))
 
+from tls_certificates import configure_certificates
+
+configure_certificates()
+
 from display_environment import enable_windows_per_monitor_dpi
 
 enable_windows_per_monitor_dpi()
@@ -7427,6 +7431,10 @@ class Launcher(ctk.CTk):
 
 
 if __name__ == "__main__":
+    if "--check-network" in sys.argv:
+        from tls_certificates import check_network
+
+        raise SystemExit(check_network())
     if "--chat-browser" in sys.argv:
         import chat_browser as chat_browser_process
 

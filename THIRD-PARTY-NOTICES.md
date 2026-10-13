@@ -6,7 +6,7 @@ with each binary package control where they differ from this summary.
 
 ## Bundled runtime components
 
-| Component | Version used by 0.9.30 | Licence |
+| Component | Version used by 0.9.31 | Licence |
 | --- | --- | --- |
 | Python | 3.12 runtime | Python Software Foundation License Version 2 and component licences |
 | Tcl/Tk | Runtime version supplied with Python | Tcl/Tk licence terms |
@@ -14,6 +14,7 @@ with each binary package control where they differ from this summary.
 | darkdetect | 0.8.0 | BSD 3-Clause |
 | Pillow | 12.3.0 | MIT-CMU / HPND-style Pillow licence and bundled component licences |
 | packaging | 25.0 | Apache-2.0 or BSD-2-Clause |
+| certifi (Mozilla trusted root certificates) | 2026.7.22 | MPL-2.0 |
 | PySide6 and Qt WebEngine | 6.8.3 | LGPL-3.0-only / GPL-2.0-only / GPL-3.0-only and bundled Qt component licences |
 | PyInstaller bootloader, where used | 6.16.0 | GPL-2.0-or-later with the PyInstaller bootloader exception |
 | Inter | 4.1 | SIL Open Font License 1.1 |

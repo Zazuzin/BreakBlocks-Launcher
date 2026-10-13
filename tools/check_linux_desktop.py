@@ -20,6 +20,9 @@ def check(executable=None, ubuntu_package=None):
         # separate Wayland window. Both frozen parent and child are checked.
         if executable is not None:
             subprocess.run(
+                [sys.executable, "tools/check_packaged_tls.py", str(executable)], check=True
+            )
+            subprocess.run(
                 [sys.executable, "tools/check_packaged_chat.py", str(executable)],
                 env=environment,
                 check=True,
@@ -32,6 +35,10 @@ def check(executable=None, ubuntu_package=None):
                 script = (
                     pathlib.Path(temporary)
                     / "usr/lib/breakblocks-launcher/app/breakblocks_launcher.py"
+                )
+                subprocess.run(
+                    [sys.executable, "tools/check_packaged_tls.py", "--python-script", str(script)],
+                    check=True,
                 )
                 subprocess.run(
                     [
